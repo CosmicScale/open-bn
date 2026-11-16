@@ -8,7 +8,7 @@
 
 int bnDeleteApplication(char *path);
 int bnUninstallApplication(char *path);
-void bnReadDirent(void);
+int bnReadDirent(void);
 int bnGameImportStart();
 int bnGameImportStat();
 int bnGameImportCancel();
