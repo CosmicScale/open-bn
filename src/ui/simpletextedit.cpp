@@ -3215,10 +3215,7 @@ bool SimpleTextEdit::AC_NewLine(bool a, bool b)
 	if (m_insertToggle || b) {
 		simpleline *line = m_curLine;
 		int movelen = line->total_chars - m_curCharNo;
-		/* clang-format off */
-#line 3139  /* the line number is part of the binary */
 		assert(movelen >= 0);
-		/* clang-format on */
 
 		simpleline *nl = alloc_text(movelen);  /* NOTE: bug: the result of alloc_text is not checked */
 

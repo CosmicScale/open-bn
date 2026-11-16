@@ -4,12 +4,14 @@ The source code of `bn`, the main program of the PlayStation BB Navigator
 (PSBBN), the PS2 Linux menu, browser and installer that shipped with the
 PlayStation 2 network adaptor and HDD in Japan.
 
-The code comes from a matching decompilation: the C and C++ sources, built with
-the original Sony toolchain, reproduce the shipped executable byte for byte. That
-identical build is the starting point for fixing and changing the program.
+The code comes from a matching decompilation, kept in
+[MatteoTurri/open-bn](https://github.com/MatteoTurri/open-bn): there the C and
+C++ sources, built with the original Sony toolchain, reproduce the shipped
+executable byte for byte. This repository starts from that code, as installed by
+the PSBBN Definitive Patch, and changes it: fixes and new features.
 
 The repository contains no original binaries or assets. You need your own copy
-of the executable (see below); sound banks, encrypted blobs and other data that
+of the executable (see below); sound banks, encrypted code and other data that
 no compiler produced are extracted from it at build time.
 
 ## The target
@@ -22,9 +24,9 @@ no compiler produced are extracted from it at build time.
 - Linked libraries (SSLeay, SQLite, zlib, libpng, libjpeg, libtiff, libmng,
   giflib, the Small script interpreter) are built from period upstream sources
   in `ref/`.
-- Reference executable: `orig/bn-jpn.elf`, SHA1
-  `0bb9908a1d423edc77d116514003866898e5cf6b`. A few fields of the linked file are
-  still copied from it; see [`docs/original-bytes.md`](docs/original-bytes.md).
+- Original executable: `orig/bn-jpn.elf`, SHA1
+  `0bb9908a1d423edc77d116514003866898e5cf6b`. The build takes from it only the
+  bytes no compiler produces (see [`docs/building.md`](docs/building.md)).
 
 ## Building
 
@@ -62,47 +64,43 @@ Set up the toolchain and build:
 
 ```sh
 make bootstrap      # Docker image, Sony gcc and binutils, PS2 Linux Kit headers
-make check          # compile every unit and compare it with the original
-make link           # link the executable: build/relink/bn.elf
-make link-cmp       # compare it with the original (prints the SHA1)
+make build          # compile every unit and link build/bn.elf
 ```
 
 `make bootstrap` takes a few minutes: it builds the toolchain into
 `docker/toolchain/` and downloads about 1 GB of PS2 Linux Kit packages from
-archive.org. The first `make check` also writes the reference disassembly
-(`expected/asm/`); after that a full check takes under a minute on 16 cores.
-After a pull that changes `docker/patches/`, rebuild the compiler with
-`make sony-gcc`.
+archive.org. The first `make build` also downloads the PSBBN Definitive Patch
+(143 MB) for the libraries `bn` links against, and compiles all 1,130 units
+(under a minute on 16 cores); after that only what changed is rebuilt. After a
+pull that changes `docker/patches/`, rebuild the compiler with `make sony-gcc`.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
 | `src/` | the Sony code of `bn`, one folder per subsystem (see [`src/README.md`](src/README.md)) |
-| `ref/` | third-party libraries, as upstream sources plus the changes the binary requires |
-| `config/units.txt` | the list of compilation units with their compiler flags |
-| `config/` | other inputs of the build and of the checks (symbols, asset list, data regions) |
+| `ref/` | third-party libraries, as upstream sources plus the changes Sony's build had |
+| `config/` | the compilation units in link order with their flags, the assets taken from the original |
 | `docker/` | Dockerfiles and patches that rebuild the Sony toolchain |
-| `tools/` | the checks (`tools/check.py`, `tools/datacheck.py`), the linker pipeline (`tools/relink/`), `tools/match` and a few diagnostics |
-| `docs/` | how the gate, the link, DNAS and the compiler work, open questions, code conventions |
-| `orig/`, `assets/`, `expected/`, `build/` | your executable, extracted data, reference disassembly, build output (all gitignored) |
+| `tools/` | the build (`tools/build.py`), the object comparison (`tools/test.py`), the formatter and the setup scripts |
+| `docs/` | how the build works and how to try a build on the console, DNAS, code conventions |
+| `orig/`, `assets/`, `build/` | your executable, extracted data, build output (all gitignored) |
 
 ## Changing the code
 
-`make check` compiles every unit and compares each function and each block of
-data with the original; `make link-cmp` compares the whole linked executable.
-For code you have not touched they work as a regression test: every function
-you did not change must still match. Many details that look arbitrary
-(declaration order, types, temporaries, an unused variable) are what makes the
-compiler produce the same bytes, so keep them unless you mean to change the
-function. To compare a single function with the original:
+Change the sources, then:
 
 ```sh
-tools/match <symbol> src/<folder>/<file>.cpp
+make build          # build/bn.elf
+make test           # the units whose object changed, against main (REF=<commit> for another)
 ```
 
+`make test` compiles the tree of another commit and compares the objects unit by
+unit: a unit in the list that you did not mean to touch (a header, a define, a
+flag) is the first thing to check. The result is tried on the console:
+[`docs/building.md`](docs/building.md) explains how.
+
 How the code is organized and how to read it: [`src/README.md`](src/README.md).
-How the checks, the link and the compiler work: [`docs/`](docs/).
 
 ## License
 

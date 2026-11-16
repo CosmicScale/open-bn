@@ -7,8 +7,6 @@
 #include <sys/stat.h>
 
 #undef lstat
-/* only the compiler diagnostics see this line number */
-#line 29
 int __lstat(const char *file, struct stat *buf)
 {
 	return __lxstat(_STAT_VER, file, buf);

@@ -3,7 +3,6 @@
  * handling and PFS file helpers. Bodies run inside self-modifying regions
  * bounded by SCE_DNAS_PROT_BEGIN/END (dnas_prot.h).
  */
-#define SCE_DNAS2_SHIM __sce_dnas2_symbol11002	/* module protection shim, see dnas_prot.h */
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>

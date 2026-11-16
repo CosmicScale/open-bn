@@ -10,14 +10,14 @@
 #include <sys/cachectl.h>
 #include "chloe.h"
 
-/* Decrypts the blob between ChloeDoushite and ChloeUsotsuki into a fresh
+/* Decrypts the stage ChloeDoushite into a fresh
    page-aligned RWX buffer (XOR with a running key that accumulates each
    encrypted byte rotated left by 3), flushes the caches, calls it with `p`
    and wipes it. Both the buffer pointer and the size are realigned in place,
    so the error path frees the aligned pointer. */
 int ChloeMaple(ChloeObj *p)
 {
-	int size = (int)ChloeUsotsuki - (int)ChloeDoushite;
+	int size = ChloeDoushiteSize;
 	unsigned char *buf;
 	int i;
 	unsigned int key;

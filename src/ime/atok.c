@@ -246,10 +246,19 @@ static int unicode_parseblob(unsigned char *s, struct UniBlob *t)
 	return t->count;
 }
 
-extern unsigned char ps2ime_key[];
-extern unsigned char ps2ime_roma[];
-extern unsigned char atok12n_key[];
-extern unsigned char atok12n_roma[];
+/* Key and romaji conversion tables of the two engines, serialized as hex strings. */
+unsigned char atok12n_key[] = {
+#include "../assets/ime/atok12n_key.inc"
+};
+unsigned char atok12n_roma[] = {
+#include "../assets/ime/atok12n_roma.inc"
+};
+unsigned char ps2ime_key[] = {
+#include "../assets/ime/ps2ime_key.inc"
+};
+unsigned char ps2ime_roma[] = {
+#include "../assets/ime/ps2ime_roma.inc"
+};
 
 /* Engine configuration given to pAtokCreateSession. The engine is a separate
  * library, so most fields are known only by the defaults atok_bind writes. */

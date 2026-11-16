@@ -1,5 +1,4 @@
 /* DNAS2 module 11: protected digest, key-derivation and block-decoding functions. */
-#define SCE_DNAS2_SHIM __sce_dnas2_symbol11002
 #include <stdlib.h>
 
 #include "dnas_prot.h"

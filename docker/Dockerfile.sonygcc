@@ -33,8 +33,7 @@ RUN patch -p1 < /work/gcc-2.95.2-frankengcc-patches.patch \
 
 # The one exception: the Kit SRPM lacks the `exception_receiver` pattern
 # for MIPS, and without it EH landing pads are entered with another frame's $gp.
-# See the header of the patch and docs/compiler.md. Do not add other patches
-# here: tools/check_toolchain.py fails if this list changes.
+# See the header of the patch.
 RUN patch -p1 < /work/mips-exception-receiver.patch
 
 # fixes for modern hosts (from decompals/old-gcc)
@@ -60,9 +59,8 @@ RUN for dir in libiberty gcc; do \
 # -msse2 -mfpmath=sse: the `double`s that gcc uses in its own computations (e.g. the
 # priority in global.c allocno_compare) must be computed in 53-bit IEEE as in the
 # original compiler. With the 80-bit x87 (the -m32 default) allocno_compare breaks a
-# tie the other way and static_006D8938 differs; nothing else changes. It is not a
-# compiler patch: it is how the host compiles the compiler. tools/check_toolchain.py
-# requires it.
+# tie the other way and the register allocation of some functions differs. It is not a
+# compiler patch: it is how the host compiles the compiler.
 RUN make -C libiberty/ CFLAGS="-std=gnu89 -m32 -static -msse2 -mfpmath=sse"
 RUN make -C gcc/ --jobs $(nproc) cpp cc1 xgcc CFLAGS="-std=gnu89 -m32 -static -msse2 -mfpmath=sse"
 RUN make -C gcc/ --jobs $(nproc) cc1plus g++ CFLAGS="-std=gnu89 -m32 -static -msse2 -mfpmath=sse"

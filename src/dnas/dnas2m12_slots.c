@@ -1,5 +1,4 @@
 /* DNAS2 module 12: protected key-slot decoders and their encrypted tables. */
-#define SCE_DNAS2_SHIM __sce_dnas2_symbol12002
 #include "dnas_prot.h"
 #include "dnas2m12_des.h"
 #include "dnas2m12_slots.h"

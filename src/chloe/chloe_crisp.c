@@ -4,9 +4,9 @@
 
 #include "chloe.h"
 
-/* Records the ChloeKnife..ChloeFork blob size, then installs the device B table. */
+/* Records the size of the ChloeKnife stage, then installs the device B table. */
 int ChloeCrisp(ChloeObj *p)
 {
-	p->blobDistance = (int)ChloeFork - (int)ChloeKnife;
+	p->blobDistance = ChloeKnifeSize;
 	return ChloeYogurt(p);
 }

@@ -1,33 +1,32 @@
 #!/usr/bin/env python3
-"""Download and extract the third-party files the link needs, into build/relink/dl/.
+"""Download and extract the third-party files the link needs, into build/dl/.
 
-Usage: python3 tools/relink/fetch.py        (from the repo root; `make link` calls it)
+Usage: python3 tools/fetch.py        (from the repo root, on the host: it needs the network;
+       `make build` calls it)
 
 They are third-party binaries: they live only in build/ (gitignored), never in the repo.
 Every file is checked against a known sha1; a cached file with the right sha1 is not
 downloaded again. Two sources:
 
-  1. GCC-29_1.RPM of the PS2 Linux Kit (disc 2, /SCEI/RPMS/; the same disc has a
-     namesake in /SRPMS/ which is the source, not that one). From the disc already
-     downloaded by `make kit` (docker/kit/tmp/disc2.iso; if missing tools/fetch_kit.py
-     downloads it). crtbegin.o, crtend.o and libgcc.a are extracted from it (rpm2cpio +
-     cpio in the open-bn-env container, like fetch_kit.py) into
-     build/relink/dl/gcc29/x/, and the members of libgcc.a into
-     build/relink/dl/ar/libgcc/ (read only by missing_syms.py).
-  2. PSBBN Definitive Patch v4.1.0 (archive.org, item psbbn-definitive-patch-v4.1,
-     143 MB): PSBBN's libc and ld.so, libstdc++, libocm, and the reference libfreetype
-     (needed only to know which symbols it resolves: the link uses a stub, make_libs.py).
-     Extracted into build/relink/dl/dp41/ under the real file name (the tar has symlinks).
-
-Why these and not the kit's: docs/linking.md.
+  1. GCC-29_1.RPM of the PS2 Linux Kit (disc 2, /SCEI/RPMS/): crtbegin.o, crtend.o and
+     libgcc.a, from the disc already downloaded by `make kit` (docker/kit/tmp/disc2.iso; if
+     missing tools/fetch_kit.py downloads it), extracted with rpm2cpio + cpio in the
+     open-bn-env container into build/dl/gcc29/x/.
+  2. PSBBN Definitive Patch v4.1.0 (archive.org, 143 MB): PSBBN's libc and ld.so, libstdc++,
+     libocm and libfreetype, the libraries bn runs with. Extracted into build/dl/dp41/ under
+     the real file name (the tar has symlinks).
 """
-import hashlib, os, shutil, struct, subprocess, sys, tarfile, urllib.request
+import hashlib, os, struct, subprocess, sys, tarfile, urllib.request
 
 VERBOSE = bool(os.environ.get('VERBOSE')) or '-v' in sys.argv[1:]
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from paths import DL, DP, GCC29, GCCLIB, LIBGCC_AR, KIT_DISC2  # noqa: E402
+
+DL = 'build/dl'                                      # everything downloaded, relative to the root
+GCC29 = f'{DL}/gcc29/x'                              # GCC-29_1.RPM extracted
+GCCLIB = f'{GCC29}/usr/lib/gcc-lib/mipsEEel-linux/2.95.2'   # crtbegin.o, crtend.o, libgcc.a
+DP = f'{DL}/dp41'                                    # files of the Definitive Patch v4.1.0
+KIT_DISC2 = 'docker/kit/tmp/disc2.iso'               # disc 2 of the kit (tools/fetch_kit.py)
 
 GCC_RPM = f'{DL}/gcc29/GCC-29_1.RPM'
 GCC_RPM_ISO_PATH = '/SCEI/RPMS/GCC-29_1.RPM'
@@ -88,42 +87,6 @@ def iso_extract(iso, path, dest):
             out.write(fh.read(size))
 
 
-def ar_members(path):
-    """Members of an ar archive (GNU/SysV format, the one of the kit's libgcc.a): [(name, bytes)]
-    in order, without the symbol table (`/`) and the long names table (`//`). Done in Python and
-    not with `ar` 2.9EE because fetch.py runs on the host, where the Sony binutils (Linux
-    binaries) may not run (Mac). Exits if the format is not the expected one."""
-    data = open(path, 'rb').read()
-    if data[:8] != b'!<arch>\n':
-        sys.exit(f'error: {path}: not an ar archive')
-    out, longnames, p = [], b'', 8
-    while p < len(data):
-        hdr = data[p:p + 60]
-        if len(hdr) < 60 or hdr[58:60] != b'`\n':
-            sys.exit(f'error: {path}: broken ar header at {p}')
-        name, size = hdr[:16].decode('ascii').rstrip(), int(hdr[48:58].decode('ascii'))
-        body = data[p + 60:p + 60 + size]
-        if len(body) != size:
-            sys.exit(f'error: {path}: truncated member at {p}')
-        if name == '//':
-            longnames, name = body, None
-        elif name.startswith('/') and name[1:].isdigit():
-            off = int(name[1:])
-            name = longnames[off:longnames.index(b'/\n', off)].decode('ascii')
-        elif name in ('/', '/SYM64/'):
-            name = None
-        elif name.startswith('#1/'):
-            sys.exit(f'error: {path}: BSD member names not supported')
-        elif name.endswith('/'):
-            name = name[:-1]
-        if name is not None:
-            if not name or '/' in name or name in ('.', '..'):
-                sys.exit(f'error: {path}: unexpected member name {name!r}')
-            out.append((name, body))
-        p += 60 + size + (size & 1)
-    return out
-
-
 def fetch_gcc():
     if not all(ok(f'{GCC29}/{p}', w) for p, w in GCC_FILES.items()):
         if not ok(GCC_RPM, GCC_RPM_SHA1):
@@ -148,25 +111,6 @@ def fetch_gcc():
                 sys.exit(f'error: {p} not extracted from {GCC_RPM} or unexpected sha1')
     if VERBOSE:
         print(f'ok  crtbegin.o crtend.o libgcc.a  -> {GCCLIB}')
-    # members of libgcc.a: missing_syms.py reads them to know which symbols it defines.
-    # Complete if it has exactly the members of `ar t`; otherwise extract into a temporary
-    # folder and rename it, so an interrupted extraction never looks complete
-    lib = f'{GCCLIB}/libgcc.a'
-    arch = ar_members(lib)
-    members = sorted(set(n for n, _ in arch))
-    if not os.path.isdir(LIBGCC_AR) or sorted(os.listdir(LIBGCC_AR)) != members:
-        tmp = LIBGCC_AR + '.tmp'
-        shutil.rmtree(tmp, ignore_errors=True)
-        os.makedirs(tmp)
-        for n, data in arch:              # like `ar x`: on a repeated name the last member wins
-            with open(os.path.join(tmp, n), 'wb') as f:
-                f.write(data)
-        if sorted(os.listdir(tmp)) != members:
-            sys.exit(f'error: incomplete extraction of {lib}')
-        shutil.rmtree(LIBGCC_AR, ignore_errors=True)
-        os.rename(tmp, LIBGCC_AR)
-    if VERBOSE:
-        print(f'ok  {len(os.listdir(LIBGCC_AR))} members of libgcc.a -> {LIBGCC_AR}')
 
 
 # ---- 2. Definitive Patch v4.1.0 --------------------------------------------------------
@@ -199,7 +143,6 @@ def fetch_dp():
             sys.exit(f'error: unexpected sha1 of {dst[m]}')
     if VERBOSE:
         print(f'ok  {len(DP_FILES)} Definitive Patch files -> {DP}')
-
 
 
 def main():

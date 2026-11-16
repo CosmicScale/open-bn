@@ -16,7 +16,6 @@ The offset is current_frame_info.args_size, the same value that mips.c prints
 in the `.cprestore` directive of the prologue.
 
 Apply it after the three Sony patches (docker/Dockerfile.sonygcc does).
-Details: docs/compiler.md. tools/check_toolchain.py pins it by sha256.
 
 --- a/gcc/config/mips/mips.md
 +++ b/gcc/config/mips/mips.md
