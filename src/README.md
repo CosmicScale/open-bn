@@ -42,10 +42,11 @@ decoding) run as worker threads built on `thread/`.
 fills a context object, then decrypts and runs two embedded encrypted stages, a
 user-space loader that writes the second stage to physical memory through
 `/dev/akmem`, and a bare-metal EE program that takes the machine over from Linux.
-The two stages are encrypted blobs extracted from the original at build time.
+The two stages are encrypted data extracted from the original at build time
+(`chloe_stages.c`, `../docs/dnas.md`).
 
-Every `.c`/`.cpp` is a compilation unit listed in `../config/units.txt` with its
-compiler flags.
+Every `.c`/`.cpp` is a compilation unit listed in `../config/units.txt`, in link
+order, with its compiler flags.
 
 ## Includes
 
@@ -57,9 +58,11 @@ otherwise g++ 2.95 does not pair it with the header's `#pragma interface`.
 
 ## Reading this code
 
-This code reproduces the original binary byte for byte: the order of
-declarations, definitions and includes, local re-declarations, types and
-temporaries are deliberate. Run `make check` and `make link-cmp` after any change.
+The code comes from a matching decompilation: many details that look arbitrary
+(the order of declarations and includes, local re-declarations, types,
+temporaries, an unused variable) are there because they made the compiler
+produce the original bytes. They can be cleaned up where a change needs it; run
+`make build` and `make test` after any change.
 
 Names found in the binary's dynamic symbol table (classes, methods, exported
 functions, the names in the native tables of the scripts) are the original ones.
@@ -71,14 +74,13 @@ All other names, including those of the 2,308 file-local functions, were chosen
 during the decompilation from what the code does.
 
 Comment markers:
-- `/* NOTE: bug: ... */` a defect of the original program, kept as it is;
+- `/* NOTE: bug: ... */` a defect of the original program, still there;
 - `/* unused, but part of the layout */` a variable, buffer or field that is never read;
 - `/* redundant as written */` a dead store, a dead branch or a redundant test;
-- `/* the line number is part of the binary */` on a `#line` directive.
 - `/* clang-format off */` ... `/* clang-format on */` around the few places the formatter must not touch: the two
-  lines whose line number reaches the binary, an inline asm block, K&R definitions and tables laid out in rows.
+  an inline asm block, K&R definitions and tables laid out in rows.
 
 ## Formatting
 
 The sources are formatted with clang-format 23.1.5 and the `.clang-format` at the root: run `make format`
-before committing (`make check` fails on unformatted files). Details in `tools/README.md`.
+before committing (`make build` fails on unformatted files). Details in `tools/README.md`.

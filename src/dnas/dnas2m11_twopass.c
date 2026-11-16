@@ -1,5 +1,4 @@
 /* DNAS2 module 11: protected two-pass block transforms with derived key groups. */
-#define SCE_DNAS2_SHIM __sce_dnas2_symbol11002
 #include <stdlib.h>
 
 #include "dnas_prot.h"

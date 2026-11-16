@@ -17,9 +17,6 @@ int SIO_socket_ioctl(int s, long type, unsigned long *arg)
 
 	i = ioctl(s, type, arg);
 	if (i < 0)
-	/* clang-format off */
-#line 324
-		ERR_put_error(ERR_LIB_SYS, SYS_F_IOCTLSOCKET, errno, __FILE__, __LINE__);  /* the line number is part of the binary */
-	/* clang-format on */
+		ERR_put_error(ERR_LIB_SYS, SYS_F_IOCTLSOCKET, errno, __FILE__, __LINE__);
 	return i;
 }

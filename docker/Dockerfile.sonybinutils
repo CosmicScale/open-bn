@@ -1,6 +1,6 @@
 # Rebuilds Sony's binutils 2.9EE (PS2 Linux, target mipsEEel-linux) as a cross
-# toolchain for x86: the real assembler of the period, and the linker (make link)
-# with objdump/readelf/objcopy/nm/ar from the same tree.
+# toolchain for x86: the assembler and the linker of the period, with
+# objdump/readelf/objcopy/nm/ar from the same tree.
 # Sources: the binutils-2.9EE SRPM from the PS2 Linux Kit (disc 2).
 #
 #   docker build --platform linux/amd64 -f Dockerfile.sonybinutils \
@@ -33,7 +33,7 @@ RUN cd /work/build && make -j$(nproc) all-gas CFLAGS="-std=gnu89 -m32 -Wno-error
 
 RUN mkdir /build && cp /work/build/gas/as-new /build/mipsEEel-linux-as
 RUN /build/mipsEEel-linux-as --version | head -2
-# this as is the one of the gate: ubuntu:focal and its apt packages are not pinned, an
+# this as is the pinned one: ubuntu:focal and its apt packages are not pinned, an
 # update of gcc-9/flex in the archive would change the binary silently
 RUN echo "e07c3a4602f51e75a321f83963ce302d624c0b43  /build/mipsEEel-linux-as" | sha1sum -c
 

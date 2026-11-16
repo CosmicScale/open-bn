@@ -2,7 +2,6 @@
  * DNAS2 family 12: message decoding (__sce_dnas2_symbol12167).
  */
 
-#define SCE_DNAS2_SHIM __sce_dnas2_symbol12002
 #include "dnas_prot.h"
 #include "dnas2m12_des.h"
 #include "dnas2m12_decode.h"

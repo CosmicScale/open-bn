@@ -7,8 +7,6 @@
 #include <sys/stat.h>
 
 #undef stat
-/* only the compiler diagnostics see this line number */
-#line 24
 int __stat(const char *file, struct stat *buf)
 {
 	return __xstat(_STAT_VER, file, buf);

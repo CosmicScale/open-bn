@@ -1,6 +1,6 @@
 /* Chloe: the path from Linux back to the native PS2 (bn_do_reboot in src/app/bnexec.cpp).
  * When ChloeBanana loads a block from /dev/hda, the steps Rings..Pudding fill a ChloeObj and
- * ChloeMaple decrypts and runs the encrypted stage ChloeDoushite..ChloeUsotsuki; otherwise the
+ * ChloeMaple decrypts and runs the encrypted stage ChloeDoushite; otherwise the
  * steps Cake..Pekoe go through /dev/akmem and "BootNative". Both end by running /sbin/reboot. */
 
 #ifndef CHLOE_H
@@ -21,8 +21,8 @@ typedef struct ChloeObj {
 	/* 0x10 */ int propB;  /* property B (ChloePeach) */
 	/* 0x14 */ int propC;  /* property C (ChloeCocoa); crypt() key in ChloeMelon */
 	/* 0x18 */ int propD;  /* property D (ChloeCocoa); crypt() salt in ChloeMelon */
-	/* 0x1C */ int blobAddr;  /* address of an external blob (ChloeRings) */
-	/* 0x20 */ int blobDistance;  /* distance between two external blobs (ChloeCrisp) */
+	/* 0x1C */ int blobAddr;  /* address of the ChloeKnife stage (ChloeRings) */
+	/* 0x20 */ int blobDistance;  /* size of the ChloeKnife stage (ChloeCrisp) */
 	/* 0x24 */ int cryptResult;  /* crypt() result (ChloeMelon) */
 	/* 0x28 */ int sysmipsArg;  /* sysmips() argument (ChloePudding) */
 	/* 0x2C */ ChloeFn openFn;
@@ -43,13 +43,12 @@ typedef struct ChloeObj {
 extern "C" {
 #endif
 
-/* Blob boundary markers: only their addresses are used, to compute blob
-   sizes by subtraction (ChloeUsotsuki - ChloeDoushite is the size of the
-   encrypted blob run by ChloeMaple). */
+/* The two encrypted stages (chloe_stages.c): ChloeDoushite is run by ChloeMaple, ChloeKnife is
+   the bare-metal program that the first one writes to physical memory. */
 extern char ChloeDoushite[];
-extern char ChloeUsotsuki[];
+extern const int ChloeDoushiteSize;
 extern char ChloeKnife[];
-extern char ChloeFork[];
+extern const int ChloeKnifeSize;
 
 /* The MIPS_TASKFLAGS kernel call of ChloeLime and ChloePudding takes three
    arguments (the second is a pointer for a read); <sys/sysmips.h> declares

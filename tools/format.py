@@ -5,7 +5,7 @@
 
 Without FILE: every .c/.cpp/.h under src/. Without --check the files are rewritten in place (`make format`);
 with --check nothing is written, the files that are not formatted are listed and the exit code is 1
-(the first step of `make check`). Exit 2 if no clang-format of that version is found.
+(the first step of `make build`). Exit 2 if no clang-format of that version is found.
 The binary is the first of CLANG_FORMAT=<path>, .venv/bin/clang-format (`make venv`) and clang-format in PATH
 (the container has it) that has the pinned version. --version prints the pinned version.
 The style is .clang-format at the root; ref/ is never formatted (ref/.clang-format disables it).
