@@ -42,7 +42,7 @@ Requirements, on Linux (tested on Arch and Ubuntu 22.04/24.04, which Linux Mint
 Clone the repository and run everything below from its root:
 
 ```sh
-git clone https://github.com/MatteoTurri/open-bn.git
+git clone https://github.com/CosmicScale/open-bn.git
 cd open-bn
 ```
 
