@@ -21,6 +21,7 @@ past its time the runner interrupts it.
 import asyncio
 import functools
 import http.server
+import importlib.util
 import os
 import re
 import socket
@@ -30,8 +31,12 @@ import threading
 import telnetlib3
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, 'tools'))
-from test import OUT, TESTS  # noqa: E402
+# tools/test.py by its path: `import test` could find the test package of the standard library
+_spec = importlib.util.spec_from_file_location('open_bn_tests', os.path.join(ROOT, 'tools', 'test.py'))
+_tests = importlib.util.module_from_spec(_spec)
+sys.path.insert(0, os.path.join(ROOT, 'tools'))  # tools/test.py imports build and fetch
+_spec.loader.exec_module(_tests)
+OUT, TESTS = _tests.OUT, _tests.TESTS
 
 DIR = '/bntmp/test'
 LOGIN_TIMEOUT = 20
@@ -45,7 +50,8 @@ def test_seconds():
 
 TEST_TIMEOUT = test_seconds() + 60  # the programs kill themselves first
 SUMMARY = re.compile(r'^(\d+) Tests (\d+) Failures (\d+) Ignored\s*\n(OK|FAIL)', re.M)
-DONE = re.compile(rb'__rc=(\d+)__')
+DONE = re.compile(rb'__rc\d+=(\d+)__')
+TIMEOUTS = (TimeoutError, asyncio.TimeoutError)  # distinct classes before Python 3.11
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -66,27 +72,34 @@ def serve(host):
 class Session:
     def __init__(self, reader, writer):
         self.reader, self.writer = reader, writer
+        self.count = 0
 
     async def expect(self, pattern, timeout):
         return await asyncio.wait_for(self.reader.readuntil_pattern(re.compile(pattern)), timeout)
 
     async def run(self, cmd, timeout=COMMAND_TIMEOUT, echo=None):
         """Runs `cmd` in the shell; returns (exit code, output). `echo` gets the output as it comes."""
-        self.writer.write(f'{cmd}; echo "__rc=$?__"\r\n'.encode())
+        # a marker of its own, so that what an interrupted command prints later is not taken for this one's
+        self.count += 1
+        done = re.compile(rb'__rc%d=(\d+)__' % self.count)
+        self.writer.write(f'{cmd}; echo "__rc{self.count}=$?__"\r\n'.encode())
         out = b''
         loop = asyncio.get_running_loop()
         end = loop.time() + timeout
-        while not DONE.search(out):
+        while not done.search(out):
             left = end - loop.time()
             if left <= 0:
                 raise TimeoutError(f'{cmd}: no answer in {timeout} s')
-            chunk = await asyncio.wait_for(self.reader.read(4096), left)
+            try:
+                chunk = await asyncio.wait_for(self.reader.read(4096), left)
+            except asyncio.TimeoutError:
+                raise TimeoutError(f'{cmd}: no answer in {timeout} s')
             if not chunk:
                 raise ConnectionError('telnet session closed')
             out += chunk
             if echo:
                 echo(chunk)
-        m = DONE.search(out)
+        m = done.search(out)
         return int(m.group(1)), out[:m.start()].decode('utf-8', 'replace').replace('\r\n', '\n')
 
 
@@ -161,7 +174,7 @@ async def main_async(host, keep):
         if not keep:
             try:
                 await s.run(f'cd / && rm -rf {DIR}')
-            except (OSError, TimeoutError):
+            except (OSError,) + TIMEOUTS:
                 print(f'warning: {DIR} could not be removed from the console', file=sys.stderr)
         s.writer.write(b'exit\r\n')
         s.writer.close()
@@ -177,12 +190,13 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     if len(args) != 1:
         sys.exit(__doc__.split('\n\n')[1])
+    os.chdir(ROOT)
     missing = [n for n in TESTS if not os.path.exists(f'{OUT}/{n}')]
     if missing:
         sys.exit(f'error: {", ".join(missing)} missing in {OUT}/: run python3 tools/test.py (make test)')
     try:
         return asyncio.run(main_async(args[0], '--keep' in sys.argv))
-    except (OSError, TimeoutError, asyncio.IncompleteReadError) as e:
+    except (OSError, asyncio.IncompleteReadError) + TIMEOUTS as e:
         sys.exit(f'error: {args[0]}: {e}')
 
 

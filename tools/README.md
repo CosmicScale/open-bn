@@ -34,9 +34,9 @@ Makefile target shown.
 
 The container has the pinned clang-format (docker/Dockerfile), so `make format` needs nothing else.
 On the host (editor format-on-save, the hook), `make venv` installs it into `.venv` (gitignored, together with
-the telnetlib3 of `tools/test_ps2.py`), like a
-lockfile-pinned dev dependency; `tools/format.py` picks the first of `CLANG_FORMAT`, `.venv/bin/clang-format`
-and `clang-format` in PATH that has the pinned version, so the system clang-format does not matter:
+the telnetlib3 of `tools/test_ps2.py`), like a lockfile-pinned dev dependency; `tools/format.py` picks the first
+of `CLANG_FORMAT`, `.venv/bin/clang-format` and `clang-format` in PATH that has the pinned version, so the system
+clang-format does not matter:
 
 ```sh
 make venv                                             # once, and again after a version bump

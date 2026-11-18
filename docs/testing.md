@@ -10,7 +10,8 @@ make test PS2=192.168.1.82    # build, then build/test/ on the console
 ```
 
 The console must be on, with `bn` idle on a menu, and telnet open (user and password from
-`PS2_USER` and `PS2_PASSWORD`, by default those of the Definitive Patch).
+`PS2_USER` and `PS2_PASSWORD`, by default those of the Definitive Patch). The console downloads the
+programs from the PC on a random TCP port: a firewall on the PC must let it through.
 
 ## What happens
 
@@ -36,7 +37,7 @@ The console must be on, with `bn` idle on a menu, and telnet open (user and pass
   writing and a file left open fail the test; like pfsd, the fake refuses to open a mounted
   partition raw.
 - **`import_disk_test`**: the same import on the console's own disk, through pfsd. It reads the
-  disk as `bn`'s own import does, and writes only to copies of `game.db` in `/bntmp/test`: an
+  disk as `bn`'s own import does, and writes only to databases of its own in `/bntmp/test`: an
   import into an empty database, an import of the console's `game.db` that must end with the same
   games, and a second import that must not write anything.
 

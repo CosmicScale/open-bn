@@ -30,7 +30,7 @@ compare:
 # over telnet (tools/test_ps2.py, on the host: it needs the console and .venv from make venv).
 test: build
 	@[ -n "$(PS2)" ] || { echo "error: PS2=<address of the console> missing (see docs/testing.md)" >&2; exit 2; }
-	@[ -x .venv/bin/python ] || { echo "error: .venv missing: run make venv" >&2; exit 2; }
+	@.venv/bin/python -c 'import telnetlib3' 2>/dev/null || { echo "error: no telnetlib3 in .venv: run make venv" >&2; exit 2; }
 	@$(DOCKER) python3 tools/test.py
 	@.venv/bin/python tools/test_ps2.py $(PS2)
 

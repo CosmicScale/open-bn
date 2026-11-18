@@ -101,8 +101,8 @@ make test PS2=<ip>  # the tests of tests/, on the console
 `make compare` compiles the tree of another commit and compares the objects unit by
 unit: a unit in the list that you did not mean to touch (a header, a define, a
 flag) is the first thing to check. The result is tried on the console:
-[`docs/building.md`](docs/building.md) explains how. A change to code that has tests
-also runs `make test` ([`docs/testing.md`](docs/testing.md)).
+[`docs/building.md`](docs/building.md) explains how. If you changed code that has
+tests, run `make test` too ([`docs/testing.md`](docs/testing.md)).
 
 How the code is organized and how to read it: [`src/README.md`](src/README.md).
 
