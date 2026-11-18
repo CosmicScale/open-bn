@@ -6,7 +6,7 @@ Usage: python3 tools/fetch.py        (from the repo root, on the host: it needs 
 
 They are third-party binaries: they live only in build/ (gitignored), never in the repo.
 Every file is checked against a known sha1; a cached file with the right sha1 is not
-downloaded again. Two sources:
+downloaded again. Three sources:
 
   1. GCC-29_1.RPM of the PS2 Linux Kit (disc 2, /SCEI/RPMS/): crtbegin.o, crtend.o and
      libgcc.a, from the disc already downloaded by `make kit` (docker/kit/tmp/disc2.iso; if
@@ -15,6 +15,8 @@ downloaded again. Two sources:
   2. PSBBN Definitive Patch v4.1.0 (archive.org, 143 MB): PSBBN's libc and ld.so, libstdc++,
      libocm and libfreetype, the libraries bn runs with. Extracted into build/dl/dp41/ under
      the real file name (the tar has symlinks).
+  3. Unity (github.com/ThrowTheSwitch/Unity), the unit test framework of the tests of tests/
+     (`make test`): its three sources, into build/dl/unity/.
 """
 import hashlib, os, struct, subprocess, sys, tarfile, urllib.request
 
@@ -49,6 +51,14 @@ DP_FILES = {  # tar member (the real file, not the symlink) -> sha1
     './__linux.4/bn/usr/lib/libfreetype.so.6.1.0': '9be5fd94ac92f70a41393c7be831ceb13ec2f2e7',
 }
 
+UNITY_URL = 'https://raw.githubusercontent.com/ThrowTheSwitch/Unity/v2.7.0/src'
+UNITY = f'{DL}/unity'
+UNITY_FILES = {                                      # the sources of Unity v2.7.0 -> sha1
+    'unity.c': '5225e8cbf9781f11943d6718acf0a0b5ded13245',
+    'unity.h': 'bc764474b12a177792cb3ec105073640beba806c',
+    'unity_internals.h': 'b29928041a5e36b203b3c002b521ac58259ac1e4',
+}
+
 
 def sha1(p):
     h = hashlib.sha1()
@@ -60,6 +70,16 @@ def sha1(p):
 
 def ok(p, want):
     return os.path.exists(p) and (want is None or sha1(p) == want)
+
+
+def download(url, dest, want):
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with urllib.request.urlopen(url, timeout=60) as r, open(dest + '.part', 'wb') as f:
+        for b in iter(lambda: r.read(1 << 20), b''):
+            f.write(b)
+    os.rename(dest + '.part', dest)
+    if sha1(dest) != want:
+        sys.exit(f'error: unexpected sha1 of {dest}')
 
 
 # ---- 1. GCC-29_1.RPM -----------------------------------------------------------------
@@ -122,14 +142,8 @@ def fetch_dp():
             print(f'ok  {len(DP_FILES)} Definitive Patch files -> {DP} (cached)')
         return
     if not ok(DP_TAR, DP_TAR_SHA1):
-        os.makedirs(DL, exist_ok=True)
         print(f'fetch: downloading {DP_URL} (143 MB)')
-        with urllib.request.urlopen(DP_URL, timeout=60) as r, open(DP_TAR + '.part', 'wb') as f:
-            for b in iter(lambda: r.read(1 << 20), b''):
-                f.write(b)
-        os.rename(DP_TAR + '.part', DP_TAR)
-        if sha1(DP_TAR) != DP_TAR_SHA1:
-            sys.exit(f'error: unexpected sha1 of {DP_TAR}')
+        download(DP_URL, DP_TAR, DP_TAR_SHA1)
     os.makedirs(DP, exist_ok=True)
     with tarfile.open(DP_TAR, 'r:gz') as t:
         for m in DP_FILES:
@@ -145,9 +159,22 @@ def fetch_dp():
         print(f'ok  {len(DP_FILES)} Definitive Patch files -> {DP}')
 
 
+# ---- 3. Unity -----------------------------------------------------------------------------
+
+def fetch_unity():
+    os.makedirs(UNITY, exist_ok=True)
+    for f, want in UNITY_FILES.items():
+        if not ok(f'{UNITY}/{f}', want):
+            print(f'fetch: downloading {UNITY_URL}/{f}')
+            download(f'{UNITY_URL}/{f}', f'{UNITY}/{f}', want)
+    if VERBOSE:
+        print(f'ok  Unity -> {UNITY}')
+
+
 def main():
     fetch_gcc()
     fetch_dp()
+    fetch_unity()
 
 
 if __name__ == '__main__':

@@ -70,9 +70,10 @@ make build          # compile every unit and link build/bn.elf
 `make bootstrap` takes a few minutes: it builds the toolchain into
 `docker/toolchain/` and downloads about 1 GB of PS2 Linux Kit packages from
 archive.org. The first `make build` also downloads the PSBBN Definitive Patch
-(143 MB) for the libraries `bn` links against, and compiles all 1,130 units
-(under a minute on 16 cores); after that only what changed is rebuilt. After a
-pull that changes `docker/patches/`, rebuild the compiler with `make sony-gcc`.
+(143 MB) for the libraries `bn` links against, and Unity for the tests, and
+compiles all 1,130 units (under a minute on 16 cores); after that only what
+changed is rebuilt. After a pull that changes `docker/patches/`, rebuild the
+compiler with `make sony-gcc`.
 
 ## Repository layout
 
@@ -82,8 +83,9 @@ pull that changes `docker/patches/`, rebuild the compiler with `make sony-gcc`.
 | `ref/` | third-party libraries, as upstream sources plus the changes Sony's build had |
 | `config/` | the compilation units in link order with their flags, the assets taken from the original |
 | `docker/` | Dockerfiles and patches that rebuild the Sony toolchain |
-| `tools/` | the build (`tools/build.py`), the object comparison (`tools/test.py`), the formatter and the setup scripts |
-| `docs/` | how the build works and how to try a build on the console, DNAS, code conventions |
+| `tests/` | tests of `bn`'s code that run on the console (`make test`, see [`docs/testing.md`](docs/testing.md)) |
+| `tools/` | the build (`tools/build.py`), the object comparison (`tools/compare.py`), the tests (`tools/test.py`), the formatter and the setup scripts |
+| `docs/` | how the build works and how to try a build on the console, the tests, DNAS, code conventions |
 | `orig/`, `assets/`, `build/` | your executable, extracted data, build output (all gitignored) |
 
 ## Changing the code
@@ -92,13 +94,15 @@ Change the sources, then:
 
 ```sh
 make build          # build/bn.elf
-make test           # the units whose object changed, against main (REF=<commit> for another)
+make compare        # the units whose object changed, against main (REF=<commit> for another)
+make test PS2=<ip>  # the tests of tests/, on the console
 ```
 
-`make test` compiles the tree of another commit and compares the objects unit by
+`make compare` compiles the tree of another commit and compares the objects unit by
 unit: a unit in the list that you did not mean to touch (a header, a define, a
 flag) is the first thing to check. The result is tried on the console:
-[`docs/building.md`](docs/building.md) explains how.
+[`docs/building.md`](docs/building.md) explains how. If you changed code that has
+tests, run `make test` too ([`docs/testing.md`](docs/testing.md)).
 
 How the code is organized and how to read it: [`src/README.md`](src/README.md).
 

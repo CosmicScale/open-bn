@@ -13,4 +13,6 @@ int bnGameImportStart();
 int bnGameImportStat();
 int bnGameImportCancel();
 
+extern const char *bnGameDbPath;
+
 #endif

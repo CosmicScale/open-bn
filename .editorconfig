@@ -1,7 +1,7 @@
-# Editor settings for src/ (the full style is .clang-format, applied by `make format`).
+# Editor settings for src/ and tests/ (the full style is .clang-format, applied by `make format`).
 root = true
 
-[src/**]
+[{src,tests}/**]
 indent_style = tab
 tab_width = 8
 insert_final_newline = true

@@ -1,6 +1,6 @@
 # Building
 
-`make build` checks the formatting of `src/`, downloads the third-party libraries (on the host,
+`make build` checks the formatting of `src/` and `tests/`, downloads the third-party libraries (on the host,
 `tools/fetch.py`) and runs `tools/build.py` in the `open-bn-env` container. Everything it writes is
 under `build/` and `assets/`, both gitignored.
 
@@ -30,9 +30,9 @@ A new `.c`/`.cpp` gets a row in `config/units.txt` (`source | cflags | asflags`)
 the link order where its code belongs: usually right after the unit it works with. Code that the
 `src/` units call goes in `src/`, a header next to its `.cpp`.
 
-## Checking a change: `make test`
+## Checking a change: `make compare`
 
-`make test REF=<commit>` (default `main`) extracts the tree of that commit into `build/test/`,
+`make compare REF=<commit>` (default `main`) extracts the tree of that commit into `build/compare/`,
 compiles it, and compares its objects with the current ones, section by section. It lists the units
 whose object changed, and those added or removed. The list should hold the units the change meant
 to touch and nothing else. Both trees are compiled by the current `tools/build.py`: a change to the

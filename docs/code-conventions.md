@@ -4,7 +4,7 @@ Conventions for the source in `src/`: comments, identifiers and formatting. The 
 n64decomp/sm64: code readable by a human, comments in English, no decompilation-process commentary in the code.
 Behaviour comments are calibrated: present where they help, absent on the obvious, short but clear.
 
-Scope: `src/`. `ref/` holds third-party libraries: they keep their own style, and are not formatted.
+Scope: `src/`; the tests of `tests/` follow its layout and formatter. `ref/` holds third-party libraries: they keep their own style, and are not formatted.
 
 ## 1. Layout
 
@@ -98,15 +98,16 @@ renamed together with all its uses in the same commit; renames go in separate co
 
 ## 6. Verification
 
-`make build`, then `make test` (the units whose object changed must be the ones the change meant to touch), then the
-console ([`building.md`](building.md)). For comments: no process words (match, matching, original, orig, codegen, gcc,
+`make build`, then `make compare` (the units whose object changed must be the ones the change meant to touch), then
+`make test` if the change touches code that has tests ([`testing.md`](testing.md)), then the console
+([`building.md`](building.md)). For comments: no process words (match, matching, original, orig, codegen, gcc,
 GOT, stack slot, register alloc, scheduling, measured, ...), no non-ASCII characters, no `0x` with 5+ digits or
 `@0x`, no MIPS mnemonic with operands, no tool/doc paths; markers only from the closed list of section 4. The review
 question: "does every comment say something the code does not? is there process?".
 
 ## 7. Formatter
 
-`src/` is formatted with clang-format **23.1.5** (`.clang-format` at the root): `make format` rewrites, the
+`src/` and `tests/` are formatted with clang-format **23.1.5** (`.clang-format` at the root): `make format` rewrites, the
 first step of `make build` checks. `tools/format.py` refuses any other version (21 and 22
 give a different result on 28-30 files). On the host: `make venv` (`tools/README.md`).
 `ref/` is not formatted (`ref/.clang-format`: `DisableFormat: true`): upstream libraries stay comparable with their

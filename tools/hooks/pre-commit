@@ -1,8 +1,8 @@
 #!/bin/sh
-# Optional pre-commit hook: refuses a commit whose staged src/ files are not formatted.
+# Optional pre-commit hook: refuses a commit whose staged src/ and tests/ files are not formatted.
 # Enable it once per checkout with: git config core.hooksPath tools/hooks
 # Needs the pinned clang-format on the host: `make venv` (tools/README.md).
 # It checks the working-tree copy of the staged files, so stage the whole file.
-files=$(git diff --cached --name-only --diff-filter=ACMR -- 'src/*.c' 'src/*.cpp' 'src/*.h')
+files=$(git diff --cached --name-only --diff-filter=ACMR -- 'src/*.c' 'src/*.cpp' 'src/*.h' 'tests/*.c' 'tests/*.cpp' 'tests/*.h')
 [ -z "$files" ] && exit 0
 exec python3 tools/format.py --check $files

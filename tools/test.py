@@ -1,84 +1,71 @@
 #!/usr/bin/env python3
-"""Which units does a change touch? Compares the objects of the tree with those of a commit.
+"""Build the tests of tests/ into build/test/ (the first half of `make test`).
 
-Usage: python3 tools/test.py REF   (in the container, after `make test` extracted REF into
-       build/test/<REF>/ with git archive)
+Usage: python3 tools/test.py [-jN]   (in the open-bn-env container, from the repository root,
+       after tools/build.py: the tests link its objects)
 
-Compiles the current tree (tools/build.py --compile-only, incremental) and the tree of REF
-(objects in build/test/<REF>/build/obj/), then compares the two objects of every unit section by
-section, debug information aside. Prints the units whose object changed, with the sections that
-differ, and the units added or removed. A unit you did not mean to touch in the list is a
-regression to look at: a header, a define or a flag changed more than you thought.
-
-Both trees are compiled by the tools/build.py of this checkout, with its toolchain and the assets
-of assets/: a change to build.py itself (base flags, includes) does not show up, and neither does
-anything that only the link sees (libraries, crt files, order of the units).
-Exit 1 if building fails, 0 otherwise.
+Each test is a program for the console: its sources (TESTS), the helpers of tests/support/ and
+Unity (build/dl/unity/, tools/fetch.py) are compiled like the units of bn, and linked with every
+unit of bn. The program starts in the test's __wrap_main: ld --wrap main points crt1 there, so
+bn's own main stays in the link without running. A test that links tests/support/fakepfs.cpp
+replaces the pfsd client (its scepfs* names are weak) with a disk in memory.
+tools/test_ps2.py runs the programs on the console.
 """
 import os
-import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
-from build import UNITS, unit_dir  # noqa: E402
+from build import (CRT_HEAD, CRT_TAIL, GCCLIB, LD, LIBS, LIBS_L, LD_QUIET, STRIP, compile_unit, fail,  # noqa: E402
+                   libs, read_units, unit_dir)
+from fetch import UNITY  # noqa: E402
 
-# debug information: it records the directory of the build
-IGNORE = {'.mdebug', '.rel.mdebug'}
-
-
-def units(path):
-    out = []
-    for line in open(path):
-        line = line.strip()
-        if line and not line.startswith('#'):
-            out.append(line.split('|')[0].strip())
-    return out
-
-
-def sections(path):
-    from elftools.elf.elffile import ELFFile
-    e = ELFFile(open(path, 'rb'))
-    return {s.name: s.data() for s in e.iter_sections() if s.header.sh_type != 'SHT_NOBITS'}
+OUT = 'build/test'
+# test program -> its own sources; the order is the order the runner runs them in
+TESTS = {
+    'import_test': ['tests/import_test.cpp', 'tests/support/fakepfs.cpp'],
+    'import_disk_test': ['tests/import_disk_test.cpp'],
+}
+COMMON = ['tests/support/testutil.cpp', f'{UNITY}/unity.c']
+CFLAGS = f'-Itests -I{UNITY}'
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit('usage: python3 tools/test.py REF')
-    ref = sys.argv[1]
-    tree = 'build/test/' + re.sub(r'[^A-Za-z0-9_.-]', '_', ref)
-    if not os.path.isdir(tree):
-        sys.exit(f'error: {tree} missing: run make test REF={ref}')
-    build = [sys.executable, f'{ROOT}/tools/build.py', '--compile-only']
-    if subprocess.run(build).returncode:
-        sys.exit('error: the current tree does not build')
-    if not os.path.lexists(f'{tree}/assets'):
-        os.symlink(os.path.relpath('assets', tree), f'{tree}/assets')
-    print(f'{ref}:')
-    if subprocess.run(build + ['--no-assets'], cwd=tree).returncode:
-        sys.exit(f'error: {ref} does not build')
-    cur, old = units(UNITS), units(f'{tree}/{UNITS}')
-    changed = []
-    for u in cur:
-        if u not in old:
-            continue
-        a, b = f'{unit_dir(u)}/out.o', f'{tree}/{unit_dir(u)}/out.o'
-        if open(a, 'rb').read() != open(b, 'rb').read():
-            sa, sb = sections(a), sections(b)
-            diff = sorted(n for n in set(sa) | set(sb) if sa.get(n) != sb.get(n) and n not in IGNORE)
-            if diff:
-                changed.append((u, diff))
-    added = [u for u in cur if u not in old]
-    removed = [u for u in old if u not in cur]
-    print(f'test       {len(cur)} units against {ref}: {len(changed)} changed, {len(added)} added, '
-          f'{len(removed)} removed')
-    for u, diff in changed:
-        print(f'  changed  {u}  ({", ".join(diff)})')
-    for u in added:
-        print(f'  added    {u}')
-    for u in removed:
-        print(f'  removed  {u}')
+    args = sys.argv[1:]
+    jobs = next((int(a[2:]) for a in args if a.startswith('-j') and a[2:]), os.cpu_count() or 1)
+    if not os.path.exists(f'{UNITY}/unity.c'):
+        fail(f'{UNITY}/unity.c missing: run python3 tools/fetch.py')
+    units = read_units()
+    missing = [u[0] for u in units if not os.path.exists(unit_dir(u[0]) + '/out.o')]
+    if missing:
+        fail(f'{len(missing)} units of bn not compiled: run make build first')
+    srcs = sorted(set(COMMON + [s for v in TESTS.values() for s in v]))
+    with ThreadPoolExecutor(jobs) as ex:
+        res = list(ex.map(lambda s: compile_unit(s, CFLAGS, ''), srcs))
+    errs = [l for _, e in res for l in e]
+    if errs:
+        print('\n'.join(errs), file=sys.stderr)
+        sys.exit(1)
+    libs()
+    os.makedirs(OUT, exist_ok=True)
+    bn = [unit_dir(u[0]) + '/out.o' for u in units]
+    for name, own in TESTS.items():
+        objs = CRT_HEAD + bn + [unit_dir(s) + '/out.o' for s in own + COMMON] + CRT_TAIL
+        unstripped = f'{OUT}/{name}.unstripped'
+        r = subprocess.run(f'{LD} -m elf32lsmip -dynamic-linker /lib/ld.so.1 --wrap main -o {unstripped} '
+                           f'{" ".join(objs)} -L{LIBS} -rpath-link {LIBS} {LIBS_L} {GCCLIB}/libgcc.a',
+                           shell=True, capture_output=True, text=True)
+        msgs = [l for l in r.stderr.splitlines() if not any(q in l for q in LD_QUIET)]
+        if r.returncode:
+            fail(f'link of {name} failed\n' + '\n'.join(msgs))
+        for l in msgs:
+            print(f'warning: ld: {l}', file=sys.stderr)
+        r = subprocess.run([STRIP, '-o', f'{OUT}/{name}', unstripped], capture_output=True, text=True)
+        if r.returncode:
+            fail(f'strip: {r.stderr.strip()}')
+    print(f'tests      {len(TESTS)} programs in {OUT}/: {", ".join(TESTS)}')
 
 
 if __name__ == '__main__':

@@ -62,7 +62,8 @@ The code comes from a matching decompilation: many details that look arbitrary
 (the order of declarations and includes, local re-declarations, types,
 temporaries, an unused variable) are there because they made the compiler
 produce the original bytes. They can be cleaned up where a change needs it; run
-`make build` and `make test` after any change.
+`make build` and `make compare` after any change, and `make test` when the
+code has tests (`docs/testing.md`).
 
 Names found in the binary's dynamic symbol table (classes, methods, exported
 functions, the names in the native tables of the scripts) are the original ones.

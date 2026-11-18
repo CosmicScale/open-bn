@@ -1,16 +1,17 @@
 # open-bn. Most targets run inside the open-bn-env Docker image (make env).
 #
-#   make build          compile and link build/bn.elf (needs orig/bn-jpn.elf, see README.md)
-#   make test REF=main  compare the objects with those built from another commit
-#   make format         format src/ with the pinned clang-format
+#   make build             compile and link build/bn.elf (needs orig/bn-jpn.elf, see README.md)
+#   make compare REF=main  compare the objects with those built from another commit
+#   make test PS2=<ip>     build the tests of tests/ and run them on a PS2 (docs/testing.md)
+#   make format            format src/ and tests/ with the pinned clang-format
 DOCKER_USER = --user $(shell id -u):$(shell id -g) -e HOME=/tmp
 DOCKER = docker run --rm --platform linux/amd64 $(DOCKER_USER) -v "$(CURDIR):/work" open-bn-env
 
-.PHONY: build test format format-check env venv need-buildx sony-gcc sony-binutils kit headers bootstrap
+.PHONY: build compare test format format-check env venv need-buildx sony-gcc sony-binutils kit headers bootstrap
 
 ## Build
 
-# Check the formatting of src/, then compile every unit and link build/bn.elf (tools/build.py).
+# Check the formatting of src/ and tests/, then compile every unit and link build/bn.elf (tools/build.py).
 # fetch.py runs on the host because it needs the network (third-party libraries into build/dl/).
 build: format-check
 	@[ -f orig/bn-jpn.elf ] || { echo "error: orig/bn-jpn.elf missing (see Building in README.md)" >&2; exit 2; }
@@ -19,13 +20,21 @@ build: format-check
 
 # Objects that differ from those built from the commit REF (default: main): the units a change touched.
 REF ?= main
-TEST_TREE = build/test/$(shell echo '$(REF)' | tr -c 'A-Za-z0-9_.\n-' '_')
-test:
-	@rm -rf $(TEST_TREE) && mkdir -p $(TEST_TREE)
-	@git archive $(REF) | tar -x -C $(TEST_TREE)
-	@$(DOCKER) python3 tools/test.py $(REF)
+COMPARE_TREE = build/compare/$(shell echo '$(REF)' | tr -c 'A-Za-z0-9_.\n-' '_')
+compare:
+	@rm -rf $(COMPARE_TREE) && mkdir -p $(COMPARE_TREE)
+	@git archive $(REF) | tar -x -C $(COMPARE_TREE)
+	@$(DOCKER) python3 tools/compare.py $(REF)
 
-# Format src/ with the pinned clang-format (tools/format.py); build verifies it first.
+# The tests of tests/, built against the objects of build (tools/test.py), run on the PS2 at PS2=<address>
+# over telnet (tools/test_ps2.py, on the host: it needs the console and .venv from make venv).
+test: build
+	@[ -n "$(PS2)" ] || { echo "error: PS2=<address of the console> missing (see docs/testing.md)" >&2; exit 2; }
+	@.venv/bin/python -c 'import telnetlib3' 2>/dev/null || { echo "error: no telnetlib3 in .venv: run make venv" >&2; exit 2; }
+	@$(DOCKER) python3 tools/test.py
+	@.venv/bin/python tools/test_ps2.py $(PS2)
+
+# Format src/ and tests/ with the pinned clang-format (tools/format.py); build verifies it first.
 format:
 	@$(DOCKER) python3 tools/format.py
 
@@ -42,10 +51,10 @@ env:
 	cd docker && docker build --platform linux/amd64 -t open-bn-env .
 
 # Host-side tools in .venv (gitignored): the pinned clang-format, used by tools/format.py on the host
-# (pre-commit hook, editor). The version comes from tools/format.py.
+# (pre-commit hook, editor), whose version comes from tools/format.py; telnetlib3 for tools/test_ps2.py.
 venv:
 	@[ -x .venv/bin/python ] || python3 -m venv .venv
-	@.venv/bin/pip install -q --disable-pip-version-check clang-format==$$(python3 tools/format.py --version)
+	@.venv/bin/pip install -q --disable-pip-version-check clang-format==$$(python3 tools/format.py --version) telnetlib3==5.0.3
 	@echo "venv       $$(.venv/bin/clang-format --version)"
 
 # docker build --output (sony-gcc, sony-binutils) needs BuildKit: the buildx plugin.
