@@ -11,7 +11,7 @@ DOCKER = docker run --rm --platform linux/amd64 $(DOCKER_USER) -v "$(CURDIR):/wo
 
 ## Build
 
-# Check the formatting of src/, then compile every unit and link build/bn.elf (tools/build.py).
+# Check the formatting of src/ and tests/, then compile every unit and link build/bn.elf (tools/build.py).
 # fetch.py runs on the host because it needs the network (third-party libraries into build/dl/).
 build: format-check
 	@[ -f orig/bn-jpn.elf ] || { echo "error: orig/bn-jpn.elf missing (see Building in README.md)" >&2; exit 2; }

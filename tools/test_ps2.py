@@ -6,9 +6,9 @@ Usage: .venv/bin/python tools/test_ps2.py HOST [--keep]
 
 1. build/test/ is served over HTTP on the address this machine uses to reach the console;
 2. a telnet session (user and password from PS2_USER and PS2_PASSWORD, default those of the
-   Definitive Patch) downloads the programs with wget into /bntmp/check and runs them one by one,
+   Definitive Patch) downloads the programs with wget into /bntmp/test and runs them one by one,
    in the order of tools/test.py, printing their output as it comes;
-3. /bntmp/check is removed, whatever happened (--keep leaves it, with the databases of a program
+3. /bntmp/test is removed, whatever happened (--keep leaves it, with the databases of a program
    that failed).
 
 A program passes when it exits 0 and prints Unity's summary with OK. Exit 0 if all pass.
@@ -33,7 +33,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from test import OUT, TESTS  # noqa: E402
 
-DIR = '/bntmp/check'
+DIR = '/bntmp/test'
 LOGIN_TIMEOUT = 20
 COMMAND_TIMEOUT = 120
 

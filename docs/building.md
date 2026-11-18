@@ -1,6 +1,6 @@
 # Building
 
-`make build` checks the formatting of `src/`, downloads the third-party libraries (on the host,
+`make build` checks the formatting of `src/` and `tests/`, downloads the third-party libraries (on the host,
 `tools/fetch.py`) and runs `tools/build.py` in the `open-bn-env` container. Everything it writes is
 under `build/` and `assets/`, both gitignored.
 

@@ -21,8 +21,8 @@ The console must be on, with `bn` idle on a menu, and telnet open (user and pass
    `ld --wrap main` points crt1 at the test's `__wrap_main`: `bn`'s own `main` stays in the link but
    never runs.
 3. `tools/test_ps2.py` (host) serves `build/test/` over HTTP, logs in with telnet, downloads the
-   programs into `/bntmp/check` with `wget` and runs them one by one, printing their output as it
-   comes. A program passes when it exits 0 and Unity's summary ends with `OK`. `/bntmp/check` is
+   programs into `/bntmp/test` with `wget` and runs them one by one, printing their output as it
+   comes. A program passes when it exits 0 and Unity's summary ends with `OK`. `/bntmp/test` is
    removed at the end, whatever happened (`--keep` leaves it, with the databases of a program
    that failed). The runner sends short commands: the shell of the console drops long typed lines.
 
@@ -36,9 +36,9 @@ The console must be on, with `bn` idle on a menu, and telnet open (user and pass
   writing and a file left open fail the test; like pfsd, the fake refuses to open a mounted
   partition raw.
 - **`import_disk_test`**: the same import on the console's own disk, through pfsd. It reads the
-  disk as `bn`'s own import does, and writes only to copies of `game.db` in `/bntmp/check`: an import into an empty database,
-  an import of the console's `game.db` that must end with the same games, and a second import that
-  must not write anything.
+  disk as `bn`'s own import does, and writes only to copies of `game.db` in `/bntmp/test`: an
+  import into an empty database, an import of the console's `game.db` that must end with the same
+  games, and a second import that must not write anything.
 
 pfsd serves several clients at once, each with its own mount points, so the tests run next to `bn`.
 But pfsd refuses to open a partition raw while another client has it mounted, and `bn` keeps

@@ -70,9 +70,10 @@ make build          # compile every unit and link build/bn.elf
 `make bootstrap` takes a few minutes: it builds the toolchain into
 `docker/toolchain/` and downloads about 1 GB of PS2 Linux Kit packages from
 archive.org. The first `make build` also downloads the PSBBN Definitive Patch
-(143 MB) for the libraries `bn` links against, and compiles all 1,130 units
-(under a minute on 16 cores); after that only what changed is rebuilt. After a
-pull that changes `docker/patches/`, rebuild the compiler with `make sony-gcc`.
+(143 MB) for the libraries `bn` links against, and Unity for the tests, and
+compiles all 1,130 units (under a minute on 16 cores); after that only what
+changed is rebuilt. After a pull that changes `docker/patches/`, rebuild the
+compiler with `make sony-gcc`.
 
 ## Repository layout
 
