@@ -1,6 +1,6 @@
 # Testing
 
-`make test PS2=<address>` builds the tests of `tests/` and runs them on a PS2 with the Definitive
+`make test PS2=<address>` builds the tests in `tests/` and runs them on a PS2 with the Definitive
 Patch. The tests run on the console because that is where `bn`'s code runs: the same compiler, the
 same libraries, the same LinuxThreads and pfsd.
 

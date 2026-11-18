@@ -2,7 +2,7 @@
 #
 #   make build             compile and link build/bn.elf (needs orig/bn-jpn.elf, see README.md)
 #   make compare REF=main  compare the objects with those built from another commit
-#   make test PS2=<ip>     build the tests of tests/ and run them on a PS2 (docs/testing.md)
+#   make test PS2=<ip>     build the tests and run them on the PS2 at <ip> (docs/testing.md)
 #   make format            format src/ and tests/ with the pinned clang-format
 DOCKER_USER = --user $(shell id -u):$(shell id -g) -e HOME=/tmp
 DOCKER = docker run --rm --platform linux/amd64 $(DOCKER_USER) -v "$(CURDIR):/work" open-bn-env
@@ -26,7 +26,7 @@ compare:
 	@git archive $(REF) | tar -x -C $(COMPARE_TREE)
 	@$(DOCKER) python3 tools/compare.py $(REF)
 
-# The tests of tests/, built against the objects of build (tools/test.py), run on the PS2 at PS2=<address>
+# The tests in tests/, built against the objects of build (tools/test.py), run on the PS2 at PS2=<address>
 # over telnet (tools/test_ps2.py, on the host: it needs the console and .venv from make venv).
 test: build
 	@[ -n "$(PS2)" ] || { echo "error: PS2=<address of the console> missing (see docs/testing.md)" >&2; exit 2; }

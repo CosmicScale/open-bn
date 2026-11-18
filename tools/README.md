@@ -17,7 +17,7 @@ Makefile target shown.
 
 ## Tests (`make test PS2=<address>`; docs/testing.md)
 
-- **`test.py`** [container] `make test`: compiles the tests of `tests/` and links each with the objects of `bn` into a
+- **`test.py`** [container] `make test`: compiles the tests in `tests/` and links each with the objects of `bn` into a
   program for the console, in `build/test/`.
   - `python3 tools/test.py [-jN]`
 - **`test_ps2.py`** (host, `.venv/bin/python`): copies the programs of `build/test/` to a PS2 over telnet,

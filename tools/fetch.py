@@ -15,7 +15,7 @@ downloaded again. Three sources:
   2. PSBBN Definitive Patch v4.1.0 (archive.org, 143 MB): PSBBN's libc and ld.so, libstdc++,
      libocm and libfreetype, the libraries bn runs with. Extracted into build/dl/dp41/ under
      the real file name (the tar has symlinks).
-  3. Unity (github.com/ThrowTheSwitch/Unity), the unit test framework of the tests of tests/
+  3. Unity (github.com/ThrowTheSwitch/Unity), the unit test framework of the tests in tests/
      (`make test`): its three sources, into build/dl/unity/.
 """
 import hashlib, os, struct, subprocess, sys, tarfile, urllib.request

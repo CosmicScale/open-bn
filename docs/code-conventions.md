@@ -4,7 +4,7 @@ Conventions for the source in `src/`: comments, identifiers and formatting. The 
 n64decomp/sm64: code readable by a human, comments in English, no decompilation-process commentary in the code.
 Behaviour comments are calibrated: present where they help, absent on the obvious, short but clear.
 
-Scope: `src/`; the tests of `tests/` follow its layout and formatter. `ref/` holds third-party libraries: they keep their own style, and are not formatted.
+Scope: `src/`; the tests in `tests/` follow the same layout and formatter. `ref/` holds third-party libraries: they keep their own style, and are not formatted.
 
 ## 1. Layout
 

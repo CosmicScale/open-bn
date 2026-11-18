@@ -95,7 +95,7 @@ Change the sources, then:
 ```sh
 make build          # build/bn.elf
 make compare        # the units whose object changed, against main (REF=<commit> for another)
-make test PS2=<ip>  # the tests of tests/, on the console
+make test PS2=<ip>  # run the tests on the PS2 at <ip>
 ```
 
 `make compare` compiles the tree of another commit and compares the objects unit by

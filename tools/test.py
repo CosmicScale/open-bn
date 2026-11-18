@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the tests of tests/ into build/test/ (the first half of `make test`).
+"""Build the tests in tests/ into build/test/ (the first half of `make test`).
 
 Usage: python3 tools/test.py [-jN]   (in the open-bn-env container, from the repository root,
        after tools/build.py: the tests link its objects)

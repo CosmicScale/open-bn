@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the tests of build/test/ on a PS2 (the second half of `make test`).
+"""Run the test programs in build/test/ on a PS2 (the second half of `make test`).
 
 Usage: .venv/bin/python tools/test_ps2.py HOST [--keep]
        (on the host, from the repository root, after tools/test.py; `make venv` installs telnetlib3)
