@@ -12,17 +12,29 @@ Makefile target shown.
 - **`test.py`** [container] `make test REF=<commit>`: compiles the tree of another commit and lists the
   units whose object differs from the current one.
 - **`fetch.py`** `make build`: downloads the third-party files of the link into `build/dl/` (on the host:
-  it needs the network): crtbegin.o, crtend.o and libgcc.a of the kit, the libraries of the Definitive Patch.
+  it needs the network): crtbegin.o, crtend.o and libgcc.a of the kit, the libraries of the Definitive Patch,
+  the sources of Unity for the tests.
+
+## Tests (`make check PS2=<address>`; docs/testing.md)
+
+- **`check.py`** [container]: compiles the tests of `tests/` and links each with the objects of `bn` into a
+  program for the console, in `build/check/`.
+  - `python3 tools/check.py [-jN]`
+- **`check_ps2.py`** (host, `.venv/bin/python`): copies the programs of `build/check/` to a PS2 over telnet,
+  runs them and reports which passed.
+  - `.venv/bin/python tools/check_ps2.py HOST [--keep]`
 
 ## Formatter (`make format`)
 
-- **`format.py`** [container] `make format`: Format the sources of src/ with clang-format 23.1.5, the only
-  version accepted.
+- **`format.py`** [container] `make format`: Format the sources of src/ and tests/ with clang-format 23.1.5,
+  the only version accepted.
   - `python3 tools/format.py [--check] [--version] [FILE ...]`
-- **`hooks/pre-commit`**: Optional pre-commit hook: refuses a commit whose staged src/ files are not formatted.
+- **`hooks/pre-commit`**: Optional pre-commit hook: refuses a commit whose staged src/ and tests/ files are
+  not formatted.
 
 The container has the pinned clang-format (docker/Dockerfile), so `make format` needs nothing else.
-On the host (editor format-on-save, the hook), `make venv` installs it into `.venv` (gitignored), like a
+On the host (editor format-on-save, the hook), `make venv` installs it into `.venv` (gitignored, together with
+the telnetlib3 of `tools/check_ps2.py`), like a
 lockfile-pinned dev dependency; `tools/format.py` picks the first of `CLANG_FORMAT`, `.venv/bin/clang-format`
 and `clang-format` in PATH that has the pinned version, so the system clang-format does not matter:
 

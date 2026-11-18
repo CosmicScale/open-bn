@@ -82,8 +82,9 @@ pull that changes `docker/patches/`, rebuild the compiler with `make sony-gcc`.
 | `ref/` | third-party libraries, as upstream sources plus the changes Sony's build had |
 | `config/` | the compilation units in link order with their flags, the assets taken from the original |
 | `docker/` | Dockerfiles and patches that rebuild the Sony toolchain |
-| `tools/` | the build (`tools/build.py`), the object comparison (`tools/test.py`), the formatter and the setup scripts |
-| `docs/` | how the build works and how to try a build on the console, DNAS, code conventions |
+| `tests/` | tests of `bn`'s code that run on the console (`make check`, see [`docs/testing.md`](docs/testing.md)) |
+| `tools/` | the build (`tools/build.py`), the object comparison (`tools/test.py`), the tests (`tools/check.py`), the formatter and the setup scripts |
+| `docs/` | how the build works and how to try a build on the console, the tests, DNAS, code conventions |
 | `orig/`, `assets/`, `build/` | your executable, extracted data, build output (all gitignored) |
 
 ## Changing the code
@@ -93,12 +94,14 @@ Change the sources, then:
 ```sh
 make build          # build/bn.elf
 make test           # the units whose object changed, against main (REF=<commit> for another)
+make check PS2=<ip> # the tests of tests/, on the console
 ```
 
 `make test` compiles the tree of another commit and compares the objects unit by
 unit: a unit in the list that you did not mean to touch (a header, a define, a
 flag) is the first thing to check. The result is tried on the console:
-[`docs/building.md`](docs/building.md) explains how.
+[`docs/building.md`](docs/building.md) explains how. A change to code that has tests
+also runs `make check` ([`docs/testing.md`](docs/testing.md)).
 
 How the code is organized and how to read it: [`src/README.md`](src/README.md).
 

@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include "thread/commandinfo.h"
 #include "thread/thposixthread.h"
+#include "app/bnapp.h"
 
 /* Name table (1024 entries): type 1 = 'P'/'C' entry, 2 = data. */
 struct NameRec {
@@ -698,7 +699,8 @@ static void buildAppTables(void)
 #include <vector>
 #include "../../ref/sqlite-2.7.2/gen/sqlite.h"
 
-#define GAME_DB "/opt1/database/sqlite/game.db"
+/* The database the import keeps up to date; the tests point it elsewhere. */
+const char *bnGameDbPath = "/opt1/database/sqlite/game.db";
 
 /* The columns of sce_game. The pages read it with `select *` and the
    installers insert rows positionally, so they never change. */
@@ -1000,7 +1002,7 @@ static void updateGameTable(int listingComplete)
 	int i;
 	unsigned j;
 
-	db = sqlite_open(GAME_DB, 0666, 0);
+	db = sqlite_open(bnGameDbPath, 0666, 0);
 	if (db == 0)
 		return;
 	sqlite_busy_timeout(db, 10000);
@@ -1045,7 +1047,7 @@ static void updateGameTable(int listingComplete)
 	changes.erase(changes.begin() + j, changes.end());
 
 	/* 3: the rows may have changed while the database was closed */
-	db = sqlite_open(GAME_DB, 0666, 0);
+	db = sqlite_open(bnGameDbPath, 0666, 0);
 	if (db == 0)
 		return;
 	sqlite_busy_timeout(db, 10000);

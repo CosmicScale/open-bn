@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Format the sources of src/ with clang-format 23.1.5, the only version accepted.
+"""Format the sources of src/ and tests/ with clang-format 23.1.5, the only version accepted.
 
     python3 tools/format.py [--check] [FILE ...]
 
-Without FILE: every .c/.cpp/.h under src/. Without --check the files are rewritten in place (`make format`);
+Without FILE: every .c/.cpp/.h under src/ and tests/. Without --check the files are rewritten in place (`make format`);
 with --check nothing is written, the files that are not formatted are listed and the exit code is 1
 (the first step of `make build`). Exit 2 if no clang-format of that version is found.
 The binary is the first of CLANG_FORMAT=<path>, .venv/bin/clang-format (`make venv`) and clang-format in PATH
@@ -44,9 +44,10 @@ def find_clang_format():
 
 def sources():
     out = []
-    for dp, dn, fn in os.walk('src'):
-        dn.sort()
-        out += [os.path.join(dp, f) for f in sorted(fn) if f.endswith(('.c', '.cpp', '.h'))]
+    for top in ('src', 'tests'):
+        for dp, dn, fn in os.walk(top):
+            dn.sort()
+            out += [os.path.join(dp, f) for f in sorted(fn) if f.endswith(('.c', '.cpp', '.h'))]
     return out
 
 
