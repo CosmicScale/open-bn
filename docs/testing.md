@@ -1,12 +1,12 @@
 # Testing
 
-`make check PS2=<address>` builds the tests of `tests/` and runs them on a PS2 with the Definitive
+`make test PS2=<address>` builds the tests of `tests/` and runs them on a PS2 with the Definitive
 Patch. The tests run on the console because that is where `bn`'s code runs: the same compiler, the
 same libraries, the same LinuxThreads and pfsd.
 
 ```sh
 make venv                     # once: telnetlib3 for the runner, in .venv
-make check PS2=192.168.1.82   # build, then build/check/ on the console
+make test PS2=192.168.1.82    # build, then build/test/ on the console
 ```
 
 The console must be on, with `bn` idle on a menu, and telnet open (user and password from
@@ -15,12 +15,12 @@ The console must be on, with `bn` idle on a menu, and telnet open (user and pass
 ## What happens
 
 1. `make build`, as usual: the tests link the objects of `bn`.
-2. `tools/check.py` (container) compiles each test, the helpers of `tests/support/` and
+2. `tools/test.py` (container) compiles each test, the helpers of `tests/support/` and
    [Unity](https://github.com/ThrowTheSwitch/Unity) (v2.7.0, downloaded by `tools/fetch.py` into
-   `build/dl/unity/`), and links each test with every unit of `bn` into a program in `build/check/`.
+   `build/dl/unity/`), and links each test with every unit of `bn` into a program in `build/test/`.
    `ld --wrap main` points crt1 at the test's `__wrap_main`: `bn`'s own `main` stays in the link but
    never runs.
-3. `tools/check_ps2.py` (host) serves `build/check/` over HTTP, logs in with telnet, downloads the
+3. `tools/test_ps2.py` (host) serves `build/test/` over HTTP, logs in with telnet, downloads the
    programs into `/bntmp/check` with `wget` and runs them one by one, printing their output as it
    comes. A program passes when it exits 0 and Unity's summary ends with `OK`. `/bntmp/check` is
    removed at the end, whatever happened (`--keep` leaves it, with the databases of a program
@@ -60,6 +60,6 @@ The runner interrupts a program that is still there a minute after `TEST_SECONDS
 
 A test of an existing program is a `static void test_...(void)` in its file plus a `RUN_TEST` line
 in its `__wrap_main`. A new program is a file in `tests/` with its own `__wrap_main` (call
-`startTests()` first) and a row in `TESTS` of `tools/check.py`, which lists its sources: add
+`startTests()` first) and a row in `TESTS` of `tools/test.py`, which lists its sources: add
 `tests/support/fakepfs.cpp` to run it on the disk in memory. The functions a test calls are those
 `bn` exports: a function that is `static` in its unit cannot be called from a test.

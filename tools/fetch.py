@@ -16,7 +16,7 @@ downloaded again. Three sources:
      libocm and libfreetype, the libraries bn runs with. Extracted into build/dl/dp41/ under
      the real file name (the tar has symlinks).
   3. Unity (github.com/ThrowTheSwitch/Unity), the unit test framework of the tests of tests/
-     (`make check`): its three sources, into build/dl/unity/.
+     (`make test`): its three sources, into build/dl/unity/.
 """
 import hashlib, os, struct, subprocess, sys, tarfile, urllib.request
 

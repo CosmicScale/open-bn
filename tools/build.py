@@ -14,7 +14,7 @@ Usage: python3 tools/build.py [-jN] [--compile-only] [--no-assets]
    ld 2.9EE links the crt files and the units in the order of config/units.txt; the result is
    stripped into build/bn.elf.
 
---compile-only stops after step 2; --no-assets skips step 1 (tools/test.py, for the tree of another
+--compile-only stops after step 2; --no-assets skips step 1 (tools/compare.py, for the tree of another
 commit, which uses the assets of this checkout). Sources, configuration and outputs are relative to
 the current directory; the toolchain and the kit are those of this checkout.
 """

@@ -98,7 +98,7 @@ renamed together with all its uses in the same commit; renames go in separate co
 
 ## 6. Verification
 
-`make build`, then `make test` (the units whose object changed must be the ones the change meant to touch), then the
+`make build`, then `make compare` (the units whose object changed must be the ones the change meant to touch), then the
 console ([`building.md`](building.md)). For comments: no process words (match, matching, original, orig, codegen, gcc,
 GOT, stack slot, register alloc, scheduling, measured, ...), no non-ASCII characters, no `0x` with 5+ digits or
 `@0x`, no MIPS mnemonic with operands, no tool/doc paths; markers only from the closed list of section 4. The review

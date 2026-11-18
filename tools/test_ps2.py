@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Run the tests of build/check/ on a PS2 (the second half of `make check`).
+"""Run the tests of build/test/ on a PS2 (the second half of `make test`).
 
-Usage: .venv/bin/python tools/check_ps2.py HOST [--keep]
-       (on the host, from the repository root, after tools/check.py; `make venv` installs telnetlib3)
+Usage: .venv/bin/python tools/test_ps2.py HOST [--keep]
+       (on the host, from the repository root, after tools/test.py; `make venv` installs telnetlib3)
 
-1. build/check/ is served over HTTP on the address this machine uses to reach the console;
+1. build/test/ is served over HTTP on the address this machine uses to reach the console;
 2. a telnet session (user and password from PS2_USER and PS2_PASSWORD, default those of the
    Definitive Patch) downloads the programs with wget into /bntmp/check and runs them one by one,
-   in the order of tools/check.py, printing their output as it comes;
+   in the order of tools/test.py, printing their output as it comes;
 3. /bntmp/check is removed, whatever happened (--keep leaves it, with the databases of a program
    that failed).
 
@@ -31,7 +31,7 @@ import telnetlib3
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
-from check import OUT, TESTS  # noqa: E402
+from test import OUT, TESTS  # noqa: E402
 
 DIR = '/bntmp/check'
 LOGIN_TIMEOUT = 20
@@ -165,11 +165,11 @@ async def main_async(host, keep):
                 print(f'warning: {DIR} could not be removed from the console', file=sys.stderr)
         s.writer.write(b'exit\r\n')
         s.writer.close()
-    print(f'check      {len(names) - len(failed)}/{len(names)} programs passed' +
+    print(f'test       {len(names) - len(failed)}/{len(names)} programs passed' +
           (f'; failed: {", ".join(failed)}' if failed else '') +
           (f' ({ignored} tests ignored)' if ignored else ''))
     if keep:
-        print(f'check      left in {DIR} on the console')
+        print(f'test       left in {DIR} on the console')
     return 1 if failed else 0
 
 
@@ -179,7 +179,7 @@ def main():
         sys.exit(__doc__.split('\n\n')[1])
     missing = [n for n in TESTS if not os.path.exists(f'{OUT}/{n}')]
     if missing:
-        sys.exit(f'error: {", ".join(missing)} missing in {OUT}/: run python3 tools/check.py (make check)')
+        sys.exit(f'error: {", ".join(missing)} missing in {OUT}/: run python3 tools/test.py (make test)')
     try:
         return asyncio.run(main_async(args[0], '--keep' in sys.argv))
     except (OSError, TimeoutError, asyncio.IncompleteReadError) as e:

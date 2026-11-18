@@ -4,25 +4,25 @@ All tools run from the repository root. Those marked [container] run inside the 
 (`docker run --rm --platform linux/amd64 -v "$PWD:/work" open-bn-env python3 ...`) or through the
 Makefile target shown.
 
-## Build (`make build`, `make test`; docs/building.md)
+## Build (`make build`, `make compare`; docs/building.md)
 
 - **`build.py`** [container] `make build`: assets, compilation of every unit (incremental), link and
   strip into `build/bn.elf`.
   - `python3 tools/build.py [-jN] [--compile-only] [--no-assets]`
-- **`test.py`** [container] `make test REF=<commit>`: compiles the tree of another commit and lists the
+- **`compare.py`** [container] `make compare REF=<commit>`: compiles the tree of another commit and lists the
   units whose object differs from the current one.
 - **`fetch.py`** `make build`: downloads the third-party files of the link into `build/dl/` (on the host:
   it needs the network): crtbegin.o, crtend.o and libgcc.a of the kit, the libraries of the Definitive Patch,
   the sources of Unity for the tests.
 
-## Tests (`make check PS2=<address>`; docs/testing.md)
+## Tests (`make test PS2=<address>`; docs/testing.md)
 
-- **`check.py`** [container]: compiles the tests of `tests/` and links each with the objects of `bn` into a
-  program for the console, in `build/check/`.
-  - `python3 tools/check.py [-jN]`
-- **`check_ps2.py`** (host, `.venv/bin/python`): copies the programs of `build/check/` to a PS2 over telnet,
+- **`test.py`** [container] `make test`: compiles the tests of `tests/` and links each with the objects of `bn` into a
+  program for the console, in `build/test/`.
+  - `python3 tools/test.py [-jN]`
+- **`test_ps2.py`** (host, `.venv/bin/python`): copies the programs of `build/test/` to a PS2 over telnet,
   runs them and reports which passed.
-  - `.venv/bin/python tools/check_ps2.py HOST [--keep]`
+  - `.venv/bin/python tools/test_ps2.py HOST [--keep]`
 
 ## Formatter (`make format`)
 
@@ -34,7 +34,7 @@ Makefile target shown.
 
 The container has the pinned clang-format (docker/Dockerfile), so `make format` needs nothing else.
 On the host (editor format-on-save, the hook), `make venv` installs it into `.venv` (gitignored, together with
-the telnetlib3 of `tools/check_ps2.py`), like a
+the telnetlib3 of `tools/test_ps2.py`), like a
 lockfile-pinned dev dependency; `tools/format.py` picks the first of `CLANG_FORMAT`, `.venv/bin/clang-format`
 and `clang-format` in PATH that has the pinned version, so the system clang-format does not matter:
 
