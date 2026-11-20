@@ -41,6 +41,10 @@ programs from the PC on a random TCP port: a firewall on the PC must let it thro
   import into an empty database, an import of the console's `game.db` that must end with the same
   games, and a second import that must not write anything.
 
+- **`gettext_test`**: the pad-help labels of text input (`GetText`, `src/app/gettext.cpp`) read from the
+  `TEXT` elements of an `fg.xml` written in `/bntmp/test`, the built-in labels kept when the file
+  or an element is missing, and long labels cut to the 31 bytes the system script `fg` has room for.
+
 pfsd serves several clients at once, each with its own mount points, so the tests run next to `bn`.
 But pfsd refuses to open a partition raw while another client has it mounted, and `bn` keeps
 mounted the partitions of the covers it showed last: `import_disk_test` lists those partitions
