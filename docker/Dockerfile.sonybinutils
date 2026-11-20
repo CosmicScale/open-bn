@@ -45,8 +45,9 @@ RUN echo "e07c3a4602f51e75a321f83963ce302d624c0b43  /build/mipsEEel-linux-as" | 
 # e07c3a46...), while the as in use is the one built with focal's flex.
 RUN apt-get update && apt-get install -y flex-old && flex --version
 
-# Our patch to ld, see its header: applied only now, so that gas (which links the same
-# bfd) stays the pinned one.
+# Our patch to bfd, for ld (see its header): applied only now, so that gas, which links
+# the same bfd, stays the pinned one. ld and the binutils built below link the patched
+# bfd; only the output of ld changes (strip and objdump give the same results).
 COPY patches/ld-compact-rel-relvaddr.patch /work/
 RUN patch -p1 < /work/ld-compact-rel-relvaddr.patch
 

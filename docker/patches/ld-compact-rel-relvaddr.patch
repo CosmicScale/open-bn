@@ -9,7 +9,8 @@ module). The entries are written in the long format, which carries the address i
 vaddr; nothing reads relvaddr (the Linux loader does not read .compact_rel at all),
 and with 0 the output depends only on the input.
 
-It changes only the .compact_rel of a link; gas, which uses the same bfd, is
+It changes only the .compact_rel written by ld (the other binutils link the same
+bfd and behave as before); gas, which uses the same bfd, is
 built before this patch is applied.
 
 --- a/bfd/elf32-mips.c

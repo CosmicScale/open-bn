@@ -52,6 +52,9 @@ TOOL = f'{ROOT}/docker/toolchain/sony'                  # Sony gcc 2.95.2 (make 
 INC = f'{ROOT}/docker/toolchain/include'                # its headers (make headers)
 BIN = f'{ROOT}/docker/toolchain/sonybinutils'           # Sony binutils 2.9EE (make sony-binutils)
 AS, LD, STRIP = (f'{BIN}/mipsEEel-linux-{t}' for t in ('as', 'ld', 'strip'))
+# the pins of docker/Dockerfile.sonybinutils: an ld built without
+# docker/patches/ld-compact-rel-relvaddr.patch links, but writes different bytes at every link
+TOOL_SHA1 = {AS: 'e07c3a4602f51e75a321f83963ce302d624c0b43', LD: 'ccaa3d26986fab487abaf619cfde7c33c7fa6bda'}
 KIT = f'{ROOT}/docker/kit/rootfs'                       # the PS2 Linux Kit (make kit)
 
 INC_C = f'-nostdinc -Isrc -I{INC}/fixinc -I{INC}/ginclude'
@@ -169,6 +172,14 @@ def assets():
             open(path, 'w').write(text)
             wrote += 1
     return wrote
+
+
+def check_toolchain():
+    for path, want in TOOL_SHA1.items():
+        if not os.path.exists(path):
+            fail(f'{path} missing: run make sony-binutils')
+        if sha1(open(path, 'rb').read()) != want:
+            fail(f'{path} is not the pinned one (SHA1 {want}): run make sony-binutils')
 
 
 def compile_cmds(src, cflags, asflags, d):
@@ -311,6 +322,7 @@ def main():
     args = sys.argv[1:]
     jobs = next((int(a[2:]) for a in args if a.startswith('-j') and a[2:]), os.cpu_count() or 1)
     tgts = targets([a for a in args if not a.startswith('-')])
+    check_toolchain()
     work = [(t, read_units(t.units)) for t in tgts]
     for t, units in work:
         if not units:

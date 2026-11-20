@@ -26,9 +26,11 @@ module (`T="bn top"` for several).
 The libraries are the ones `bn` runs with: libc, ld.so, libstdc++, libocm and libfreetype of the
 Definitive Patch, and libm, libpthread, libdl and libcrypt of the PS2 Linux Kit (the same glibc
 2.2.2). `-E` exports every global: the modules of `bn/modules/` resolve symbols against `bn`.
-`__DATE__` and `__TIME__` are fixed, so a build does not depend on when it runs, and the same sources
-give the same `bn.elf` and modules byte for byte: ld 2.9EE left a field of the `.compact_rel` entries
-uninitialized, which `docker/patches/ld-compact-rel-relvaddr.patch` sets to 0.
+`__DATE__` and `__TIME__` are fixed, so a build does not depend on when it runs, and in the container
+(where the tree is `/work`: the paths of the headers end up in `bn`'s assert strings) the same sources
+give the same `bn.elf` and modules byte for byte. ld 2.9EE left a field of the `.compact_rel` entries
+uninitialized, which `docker/patches/ld-compact-rel-relvaddr.patch` sets to 0; `tools/build.py`
+checks that the ld in use is the patched one.
 
 ## Modules
 
