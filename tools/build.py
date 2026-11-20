@@ -19,7 +19,8 @@ config/modules/<name>/ with a units.txt is one. Without TARGET all of them are b
 A module is built the same way from config/modules/<name>/units.txt, without assets: its objects
 go into build/modules/<name>/obj/, and ld -shared links them with the crt files, without libraries
 (the undefined symbols of a module are resolved by bn and the libraries it has loaded), into
-build/modules/<name>.so.
+build/modules/<name>.so; every symbol it imports must be defined by build/bn.elf or one of those
+libraries, as bn's dlopen requires.
 
 --compile-only stops after step 2; --no-assets skips step 1 (tools/compare.py, for the tree of another
 commit, which uses the assets of this checkout). Sources, configuration and outputs are relative to
@@ -117,6 +118,8 @@ def targets(names=(), root='.'):
     tree whose config/modules/ is listed (tools/compare.py)."""
     m = os.path.join(root, MODULES)
     mods = sorted(d for d in os.listdir(m) if os.path.exists(f'{m}/{d}/units.txt')) if os.path.isdir(m) else []
+    if 'bn' in mods:
+        fail(f'{m}/bn/: a module cannot be named bn')
     known = ['bn'] + mods
     bad = [n for n in names if n not in known]
     if bad:
@@ -273,14 +276,45 @@ def link_module(name, units, obj):
     r = run(f'{STRIP} -o {so} {unstripped}')
     if r.returncode:
         fail(f'strip: {r.stderr.strip()}')
+    check_imports(so)
     return so
 
 
+def dynsym(path):
+    """{name: defined} of the .dynsym of an ELF file, without the weak undefined symbols."""
+    from elftools.elf.elffile import ELFFile
+    with open(path, 'rb') as f:
+        s = ELFFile(f).get_section_by_name('.dynsym')
+        return {x.name: x['st_shndx'] != 'SHN_UNDEF' for x in s.iter_symbols()
+                if x.name and (x['st_shndx'] != 'SHN_UNDEF' or x['st_info']['bind'] != 'STB_WEAK')}
+
+
+def check_imports(so):
+    """ld -shared accepts any undefined symbol, but bn dlopens a module with RTLD_NOW: every symbol
+    the module imports must be defined by build/bn.elf or by a library bn loads, or the module does
+    not load (none of the original modules imports from another module)."""
+    homes = [ELF] + [f'{LIBS}/{n}' for n in LIB_FILES]
+    if not all(os.path.exists(p) for p in homes):
+        print(f'warning: {so}: imports not checked, build bn first', file=sys.stderr)
+        return
+    defined = set()
+    for p in homes:
+        defined |= {n for n, d in dynsym(p).items() if d}
+    missing = sorted(n for n, d in dynsym(so).items() if not d and n not in defined)
+    if missing:
+        fail(f'{so} imports symbols that {ELF} and its libraries do not define (rebuild bn if it is '
+             f'out of date): {", ".join(missing)}')
+
+
 def main():
+    sys.stdout.reconfigure(line_buffering=True)  # in order with the warnings on stderr
     args = sys.argv[1:]
     jobs = next((int(a[2:]) for a in args if a.startswith('-j') and a[2:]), os.cpu_count() or 1)
     tgts = targets([a for a in args if not a.startswith('-')])
     work = [(t, read_units(t.units)) for t in tgts]
+    for t, units in work:
+        if not units:
+            fail(f'{t.units} has no units')
     if '--no-assets' not in args and any(t.is_bn for t in tgts):
         n = assets()
         print(f'assets     {n} written' if n else 'assets     up to date')

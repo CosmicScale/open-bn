@@ -28,8 +28,8 @@ The libraries are listed in alphabetical order of their directory.
   `cp/tinfo.cc`, `cp/tinfo2.cc` directly, `L_eh` of `libgcc2.c` and `L_op_delete` of `cp/new2.cc`
   through `src/modules/libgcc/`, with the flags of the libgcc build (`config/modules/top/units.txt`).
 - **Same as upstream**: `libgcc2.c`, `longlong.h`, `fp-bit.c` (from `gcc/config/fp-bit.c`). They are
-  the vanilla files: the Sony patch of `libgcc2.c` (applied in the toolchain build) only has
-  hunks after the sections compiled here. For the modules: `frame.c`, `frame.h`, `eh-common.h`,
+  the vanilla files: the Sony patch of `libgcc2.c` (applied in the toolchain build) only touches
+  the `L_bb` section, which is not compiled here. For the modules: `frame.c`, `frame.h`, `eh-common.h`,
   `dwarf2.h`, `gthr.h`, `gthr-posix.h`, `gansidecl.h`, `cp/exception.cc`, `cp/new2.cc`,
   `cp/tinfo.cc`, `cp/tinfo.h`, `cp/tinfo2.cc` (from `gcc/`) and `ansidecl.h` (from `include/`).
 - **Deviations**:

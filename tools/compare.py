@@ -6,8 +6,8 @@ Usage: python3 tools/compare.py REF   (in the container, after `make compare` ex
 
 Compiles the current tree (tools/build.py --compile-only, incremental) and the tree of REF
 (objects in build/compare/<REF>/build/), then compares the two objects of every unit of bn and of
-the modules section by section, debug information aside. Prints the units whose object changed, with the sections that
-differ, and the units added or removed. A unit you did not mean to touch in the list is a
+the modules section by section, debug information aside. Prints the units whose object changed,
+with the sections that differ, and the units added or removed. A unit you did not mean to touch in the list is a
 regression to look at: a header, a define or a flag changed more than you thought.
 
 Both trees are compiled by the tools/build.py of this checkout, with its toolchain and the assets

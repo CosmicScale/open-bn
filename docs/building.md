@@ -35,6 +35,9 @@ into `build/modules/<name>/obj/`, and ld links them with `-shared -soname <name>
 `crti.o`/`crtbegin.o` and `crtend.o`/`crtn.o`, as `g++ -shared` does, into `build/modules/<name>.so`.
 No library is linked: the undefined symbols of a module (functions of `bn` such as `amx_GetAddr`, and
 of libc, libpthread and libstdc++) are resolved by `bn` and the libraries it has already loaded.
+`bn` opens a module with `RTLD_NOW`, so a symbol nobody defines would make it fail to load: after the
+link, the build checks every symbol the module imports against `build/bn.elf` and `build/libs/` (it
+warns and skips the check when `bn` has not been built yet).
 
 Each module carries its own copy of the libgcc members it uses (exception handling, RTTI,
 `operator delete`): they are built from `src/modules/libgcc/` and `ref/gcc-2.95.2/` with the flags of
@@ -71,9 +74,11 @@ wget -O /opt0/bn/bn.new http://<pc>:8000/bn.elf && chmod 755 /opt0/bn/bn.new && 
 `/opt0/bn/modules/`:
 
 ```sh
-cp /opt0/bn/modules/top.so /opt0/bn/modules/top.so.orig
-wget -O /opt0/bn/modules/top.so.new http://<pc>:8000/modules/top.so && mv /opt0/bn/modules/top.so.new /opt0/bn/modules/top.so
+cd /opt0/bn/modules
+[ -e top.so.orig ] || cp -p top.so top.so.orig      # once: keep the installed one
+wget -O top.so.new http://<pc>:8000/modules/top.so && chmod 700 top.so.new && mv top.so.new top.so
 ```
 
-Then restart the console. To go back, copy the `.orig` files back. What a change touches is tried on the console, together with
-what is always on the path: the main menu, the Game Collection, launching a game.
+`top.so` is loaded by the Top Menu (`/opt0/bn/script/top.xml`) at every boot. Then restart the
+console. To go back, copy the `.orig` files back. What a change touches is tried on the console,
+together with what is always on the path: the main menu, the Game Collection, launching a game.
