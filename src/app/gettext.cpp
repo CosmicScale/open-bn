@@ -21,7 +21,7 @@
    fg.xml already has for the buttons of the message boxes. */
 static const char *const s_id[TEXT_COUNT] = { "skb_btn_delete", "msgtop_btn_back", "msgtop_btn_enter",
 	"skb_btn_convert" };
-static const char *s_text[TEXT_COUNT] = { "Delete", "Back", "Enter", "変換" };
+static const char *s_text[TEXT_COUNT] = { "Delete", "Back", "Enter", "Convert" };
 static char *s_read[TEXT_COUNT]; /* the labels read from a file, to free */
 static int s_loaded;
 
