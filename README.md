@@ -74,7 +74,7 @@ archive.org. The first `make build` also downloads the PSBBN Definitive Patch
 (143 MB) for the libraries `bn` links against, and Unity for the tests, and
 compiles all 1,130 units (under a minute on 16 cores); after that only what
 changed is rebuilt. After a pull that changes `docker/patches/`, rebuild the
-compiler with `make sony-gcc`.
+toolchain with `make sony-gcc sony-binutils`.
 
 ## Repository layout
 

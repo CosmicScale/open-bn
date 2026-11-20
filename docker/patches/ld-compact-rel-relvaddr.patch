@@ -1,0 +1,32 @@
+Initializes the relvaddr field of the .compact_rel entries, so that ld writes the
+same bytes at every link.
+
+mips_elf_relocate_section (bfd/elf32-mips.c) builds each .compact_rel entry in a
+local `Elf32_crinfo cptrel` and assigns its format, type, dist2to, konst and vaddr,
+but never relvaddr: the 19 low bits of the info word get whatever was on the
+stack, and two links of the same objects give different files (bn.elf and every
+module). The entries are written in the long format, which carries the address in
+vaddr; nothing reads relvaddr (the Linux loader does not read .compact_rel at all),
+and with 0 the output depends only on the input.
+
+It changes only the .compact_rel of a link; gas, which uses the same bfd, is
+built before this patch is applied.
+
+--- a/bfd/elf32-mips.c
++++ b/bfd/elf32-mips.c
+@@ -5779,6 +5779,7 @@
+ 
+ 		      /* Make an entry of compact relocation info.  */
+ 		      mips_elf_set_cr_format (cptrel, CRF_MIPS_LONG);
++		      mips_elf_set_cr_relvaddr (cptrel, 0);
+ 		      cptrel.vaddr = (rel->r_offset
+ 				      + input_section->output_section->vma
+ 				      + input_section->output_offset);
+@@ -6012,6 +6013,7 @@
+ 
+ 	      /* Make an entry of compact relocation info.  */
+ 	      mips_elf_set_cr_format (cptrel, CRF_MIPS_LONG);
++	      mips_elf_set_cr_relvaddr (cptrel, 0);
+ 	      cptrel.vaddr = (rel->r_offset
+ 			      + input_section->output_section->vma
+ 			      + input_section->output_offset);
