@@ -45,6 +45,12 @@ RUN echo "e07c3a4602f51e75a321f83963ce302d624c0b43  /build/mipsEEel-linux-as" | 
 # e07c3a46...), while the as in use is the one built with focal's flex.
 RUN apt-get update && apt-get install -y flex-old && flex --version
 
+# Our patch to bfd, for ld (see its header): applied only now, so that gas, which links
+# the same bfd, stays the pinned one. ld and the binutils built below link the patched
+# bfd; only the output of ld changes (strip and objdump give the same results).
+COPY patches/ld-compact-rel-relvaddr.patch /work/
+RUN patch -p1 < /work/ld-compact-rel-relvaddr.patch
+
 # linker and binutils, same configure and same flags as gas. configure runs before
 # flex-old, when there is no libfl ("checking for yywrap in -lfl... no"): LEXLIB stays
 # empty and arlex.l, syslex.l, deflex.l, rclex.l define yywrap themselves. If a
@@ -60,7 +66,7 @@ RUN cp /work/build/ld/ld-new /build/mipsEEel-linux-ld && \
     for t in objdump readelf objcopy nm-new:nm ar size strings strip-new:strip; do \
         src=${t%%:*}; dst=${t##*:}; cp /work/build/binutils/$src /build/mipsEEel-linux-$dst; done
 RUN /build/mipsEEel-linux-ld --version | head -2 && /build/mipsEEel-linux-ld -V | tail -5
-RUN echo "e0f4e91764344fce367471084b27371468136d8a  /build/mipsEEel-linux-ld" | sha1sum -c
+RUN echo "ccaa3d26986fab487abaf619cfde7c33c7fa6bda  /build/mipsEEel-linux-ld" | sha1sum -c
 
 FROM scratch AS export
 COPY --from=build /build/* .

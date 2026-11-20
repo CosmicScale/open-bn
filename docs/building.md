@@ -4,6 +4,10 @@
 `tools/fetch.py`) and runs `tools/build.py` in the `open-bn-env` container. Everything it writes is
 under `build/` and `assets/`, both gitignored.
 
+It builds `bn` and its modules, the shared objects `bn` loads from `/opt0/bn/modules/`: every directory
+`config/modules/<name>/` with a `units.txt` is one. `make build T=<target>` builds only `bn` or one
+module (`T="bn top"` for several).
+
 ## Steps of `tools/build.py`
 
 1. **Assets.** The rows of `config/assets.txt` are cut from `orig/bn-jpn.elf` into `assets/`, as the
@@ -22,7 +26,27 @@ under `build/` and `assets/`, both gitignored.
 The libraries are the ones `bn` runs with: libc, ld.so, libstdc++, libocm and libfreetype of the
 Definitive Patch, and libm, libpthread, libdl and libcrypt of the PS2 Linux Kit (the same glibc
 2.2.2). `-E` exports every global: the modules of `bn/modules/` resolve symbols against `bn`.
-`__DATE__` and `__TIME__` are fixed, so a build does not depend on when it runs.
+`__DATE__` and `__TIME__` are fixed, so a build does not depend on when it runs, and in the container
+(where the tree is `/work`: the paths of the headers end up in `bn`'s assert strings) the same sources
+give the same `bn.elf` and modules byte for byte. ld 2.9EE left a field of the `.compact_rel` entries
+uninitialized, which `docker/patches/ld-compact-rel-relvaddr.patch` sets to 0; `tools/build.py`
+checks that the ld in use is the patched one.
+
+## Modules
+
+A module is built like `bn` from `config/modules/<name>/units.txt`, without assets: its objects go
+into `build/modules/<name>/obj/`, and ld links them with `-shared -soname <name>.so` between the kit's
+`crti.o`/`crtbegin.o` and `crtend.o`/`crtn.o`, as `g++ -shared` does, into `build/modules/<name>.so`.
+No library is linked: the undefined symbols of a module (functions of `bn` such as `amx_GetAddr`, and
+of libc, libpthread and libstdc++) are resolved by `bn` and the libraries it has already loaded.
+`bn` opens a module with `RTLD_NOW`, so a symbol nobody defines would make it fail to load: after the
+link, the build checks every symbol the module imports against `build/bn.elf` and `build/libs/` (it
+warns and skips the check when `bn` has not been built yet).
+
+Each module carries its own copy of the libgcc members it uses (exception handling, RTTI,
+`operator delete`): they are built from `src/modules/libgcc/` and `ref/gcc-2.95.2/` with the flags of
+gcc's libgcc build. A new module gets its sources in `src/modules/<name>/` and its `units.txt`,
+which lists those shared members too.
 
 ## Adding a unit
 
@@ -50,6 +74,15 @@ cp /opt0/bn/bn /opt0/bn/bn.orig       # once: keep the installed one
 wget -O /opt0/bn/bn.new http://<pc>:8000/bn.elf && chmod 755 /opt0/bn/bn.new && mv /opt0/bn/bn.new /opt0/bn/bn
 ```
 
-(`python3 -m http.server -d build` on the PC serves `build/bn.elf`.) Then restart the console.
-To go back, copy `bn.orig` over `bn`. What a change touches is tried on the console, together with
-what is always on the path: the main menu, the Game Collection, launching a game.
+(`python3 -m http.server -d build` on the PC serves `build/bn.elf`.) A module goes next to it, in
+`/opt0/bn/modules/`:
+
+```sh
+cd /opt0/bn/modules
+[ -e top.so.orig ] || cp -p top.so top.so.orig      # once: keep the installed one
+wget -O top.so.new http://<pc>:8000/modules/top.so && chmod 700 top.so.new && mv top.so.new top.so
+```
+
+`top.so` is loaded by the Top Menu (`/opt0/bn/script/top.xml`) at every boot. Then restart the
+console. To go back, copy the `.orig` files back. What a change touches is tried on the console,
+together with what is always on the path: the main menu, the Game Collection, launching a game.

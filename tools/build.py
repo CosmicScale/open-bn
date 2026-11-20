@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Build bn: from the sources to build/bn.elf.
+"""Build bn and its modules: from the sources to build/bn.elf and build/modules/<name>.so.
 
-Usage: python3 tools/build.py [-jN] [--compile-only] [--no-assets]
-       (in the open-bn-env container, from the repository root: `make build`)
+Usage: python3 tools/build.py [-jN] [--compile-only] [--no-assets] [TARGET ...]
+       (in the open-bn-env container, from the repository root: `make build [T=<target>]`)
+
+The targets are bn and the modules it loads with dlopen from /opt0/bn/modules/: every directory
+config/modules/<name>/ with a units.txt is one. Without TARGET all of them are built.
 
 1. Assets: every row of config/assets.txt is cut from orig/bn-jpn.elf into assets/<file>, as the
    body of a C initializer that a source #includes. They are never committed.
@@ -13,6 +16,11 @@ Usage: python3 tools/build.py [-jN] [--compile-only] [--no-assets]
 3. Link: the shared libraries go into build/libs/ (from build/dl/, tools/fetch.py, and the kit);
    ld 2.9EE links the crt files and the units in the order of config/units.txt; the result is
    stripped into build/bn.elf.
+A module is built the same way from config/modules/<name>/units.txt, without assets: its objects
+go into build/modules/<name>/obj/, and ld -shared links them with the crt files, without libraries
+(the undefined symbols of a module are resolved by bn and the libraries it has loaded), into
+build/modules/<name>.so; every symbol it imports must be defined by build/bn.elf or one of those
+libraries, as bn's dlopen requires.
 
 --compile-only stops after step 2; --no-assets skips step 1 (tools/compare.py, for the tree of another
 commit, which uses the assets of this checkout). Sources, configuration and outputs are relative to
@@ -37,11 +45,16 @@ ASSETS = 'config/assets.txt'
 OBJ = 'build/obj'
 LIBS = 'build/libs'
 ELF = 'build/bn.elf'
+MODULES = 'config/modules'                              # config/modules/<name>/units.txt
+MODULES_OUT = 'build/modules'
 
 TOOL = f'{ROOT}/docker/toolchain/sony'                  # Sony gcc 2.95.2 (make sony-gcc)
 INC = f'{ROOT}/docker/toolchain/include'                # its headers (make headers)
 BIN = f'{ROOT}/docker/toolchain/sonybinutils'           # Sony binutils 2.9EE (make sony-binutils)
 AS, LD, STRIP = (f'{BIN}/mipsEEel-linux-{t}' for t in ('as', 'ld', 'strip'))
+# the pins of docker/Dockerfile.sonybinutils: an ld built without
+# docker/patches/ld-compact-rel-relvaddr.patch links, but writes different bytes at every link
+TOOL_SHA1 = {AS: 'e07c3a4602f51e75a321f83963ce302d624c0b43', LD: 'ccaa3d26986fab487abaf619cfde7c33c7fa6bda'}
 KIT = f'{ROOT}/docker/kit/rootfs'                       # the PS2 Linux Kit (make kit)
 
 INC_C = f'-nostdinc -Isrc -I{INC}/fixinc -I{INC}/ginclude'
@@ -93,19 +106,43 @@ def rows(path):
             yield [x.strip() for x in line.split('|')]
 
 
-def read_units():
+class Target:
+    """bn or a module: its units file and the directory of its objects."""
+
+    def __init__(self, name):
+        self.name = name
+        self.is_bn = name == 'bn'
+        self.units = UNITS if self.is_bn else f'{MODULES}/{name}/units.txt'
+        self.obj = OBJ if self.is_bn else f'{MODULES_OUT}/{name}/obj'
+
+
+def targets(names=(), root='.'):
+    """The targets named (all of them if none): bn first, then the modules in name order. root: the
+    tree whose config/modules/ is listed (tools/compare.py)."""
+    m = os.path.join(root, MODULES)
+    mods = sorted(d for d in os.listdir(m) if os.path.exists(f'{m}/{d}/units.txt')) if os.path.isdir(m) else []
+    if 'bn' in mods:
+        fail(f'{m}/bn/: a module cannot be named bn')
+    known = ['bn'] + mods
+    bad = [n for n in names if n not in known]
+    if bad:
+        fail(f'unknown target {", ".join(bad)} (targets: {", ".join(known)})')
+    return [Target(n) for n in known if not names or n in names]
+
+
+def read_units(path=UNITS):
     """[(source, cflags, asflags)] in link order."""
     units = []
-    for f in rows(UNITS):
+    for f in rows(path):
         f += ['', '']
         if not os.path.exists(f[0]):
-            fail(f'{UNITS}: {f[0]} does not exist')
+            fail(f'{path}: {f[0]} does not exist')
         units.append((f[0], f[1], f[2]))
     return units
 
 
-def unit_dir(src):
-    return f'{OBJ}/' + re.sub(r'[^A-Za-z0-9_]', '_', src)
+def unit_dir(src, obj=OBJ):
+    return f'{obj}/' + re.sub(r'[^A-Za-z0-9_]', '_', src)
 
 
 def assets():
@@ -137,6 +174,14 @@ def assets():
     return wrote
 
 
+def check_toolchain():
+    for path, want in TOOL_SHA1.items():
+        if not os.path.exists(path):
+            fail(f'{path} missing: run make sony-binutils')
+        if sha1(open(path, 'rb').read()) != want:
+            fail(f'{path} is not the pinned one (SHA1 {want}): run make sony-binutils')
+
+
 def compile_cmds(src, cflags, asflags, d):
     is_cxx = src.endswith(('.cpp', '.cc'))
     flags = cflags.split()
@@ -160,9 +205,9 @@ def up_to_date(d, key):
     return all(os.path.exists(p) and os.path.getmtime(p) <= t for p in deps)
 
 
-def compile_unit(src, cflags, asflags):
+def compile_unit(src, cflags, asflags, obj=OBJ):
     """Compiles one unit if needed; returns (compiled, error lines)."""
-    d = unit_dir(src)
+    d = unit_dir(src, obj)
     cc, gas = compile_cmds(src, cflags, asflags, d)
     key = f'{cc}\n{gas}'
     if up_to_date(d, key):
@@ -225,24 +270,86 @@ def link(units):
         fail(f'strip: {r.stderr.strip()}')
 
 
+def link_module(name, units, obj):
+    """build/modules/<name>.so: the link line of `g++ -shared`, crt files around the units."""
+    d = f'{MODULES_OUT}/{name}'
+    so, unstripped = f'{MODULES_OUT}/{name}.so', f'{d}/{name}.unstripped.so'
+    objs = [f'{KIT}/usr/lib/crti.o', f'{GCCLIB}/crtbegin.o'] + [unit_dir(u[0], obj) + '/out.o' for u in units] \
+        + CRT_TAIL
+    for p in (unstripped, so):
+        if os.path.exists(p):
+            os.remove(p)
+    r = run(f'{LD} -m elf32lsmip -shared -soname {name}.so -o {unstripped} -Map {d}/{name}.map {" ".join(objs)}')
+    if r.returncode:
+        fail(f'link of {name}.so failed\n{r.stderr}')
+    for l in r.stderr.splitlines():
+        print(f'warning: ld: {l}', file=sys.stderr)
+    r = run(f'{STRIP} -o {so} {unstripped}')
+    if r.returncode:
+        fail(f'strip: {r.stderr.strip()}')
+    check_imports(so)
+    return so
+
+
+def dynsym(path):
+    """{name: defined} of the .dynsym of an ELF file, without the weak undefined symbols."""
+    from elftools.elf.elffile import ELFFile
+    with open(path, 'rb') as f:
+        s = ELFFile(f).get_section_by_name('.dynsym')
+        return {x.name: x['st_shndx'] != 'SHN_UNDEF' for x in s.iter_symbols()
+                if x.name and (x['st_shndx'] != 'SHN_UNDEF' or x['st_info']['bind'] != 'STB_WEAK')}
+
+
+def check_imports(so):
+    """ld -shared accepts any undefined symbol, but bn dlopens a module with RTLD_NOW: every symbol
+    the module imports must be defined by build/bn.elf or by a library bn loads, or the module does
+    not load (none of the original modules imports from another module)."""
+    homes = [ELF] + [f'{LIBS}/{n}' for n in LIB_FILES]
+    if not all(os.path.exists(p) for p in homes):
+        print(f'warning: {so}: imports not checked, build bn first', file=sys.stderr)
+        return
+    defined = set()
+    for p in homes:
+        defined |= {n for n, d in dynsym(p).items() if d}
+    missing = sorted(n for n, d in dynsym(so).items() if not d and n not in defined)
+    if missing:
+        fail(f'{so} imports symbols that {ELF} and its libraries do not define (rebuild bn if it is '
+             f'out of date): {", ".join(missing)}')
+
+
 def main():
+    sys.stdout.reconfigure(line_buffering=True)  # in order with the warnings on stderr
     args = sys.argv[1:]
     jobs = next((int(a[2:]) for a in args if a.startswith('-j') and a[2:]), os.cpu_count() or 1)
-    units = read_units()
-    if '--no-assets' not in args:
+    tgts = targets([a for a in args if not a.startswith('-')])
+    check_toolchain()
+    work = [(t, read_units(t.units)) for t in tgts]
+    for t, units in work:
+        if not units:
+            fail(f'{t.units} has no units')
+    if '--no-assets' not in args and any(t.is_bn for t in tgts):
         n = assets()
         print(f'assets     {n} written' if n else 'assets     up to date')
     with ThreadPoolExecutor(jobs) as ex:
-        res = list(ex.map(lambda u: compile_unit(*u), units))
-    errs = [l for _, e in res for l in e]
-    built = sum(1 for b, e in res if b and not e)
-    print(f'units      {len(units)}, {built} compiled' + (f', {sum(1 for _, e in res if e)} failed' if errs else ''))
+        res = {t.name: list(ex.map(lambda u: compile_unit(*u, t.obj), units)) for t, units in work}
+    errs = []
+    for t, units in work:
+        e = [l for _, el in res[t.name] for l in el]
+        built = sum(1 for b, el in res[t.name] if b and not el)
+        failed = sum(1 for _, el in res[t.name] if el)
+        print(f'units      {t.name}: {len(units)}, {built} compiled' + (f', {failed} failed' if failed else ''))
+        errs += e
     if errs:
         print('\n'.join(errs), file=sys.stderr)
         sys.exit(1)
-    if '--compile-only' not in args:
-        link(units)
-        print(f'linked     {ELF}')
+    if '--compile-only' in args:
+        return
+    for t, units in work:
+        if t.is_bn:
+            link(units)
+            print(f'linked     {ELF}')
+        else:
+            print(f'linked     {link_module(t.name, units, t.obj)}')
 
 
 if __name__ == '__main__':
