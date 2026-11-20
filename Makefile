@@ -1,6 +1,7 @@
 # open-bn. Most targets run inside the open-bn-env Docker image (make env).
 #
-#   make build             compile and link build/bn.elf (needs orig/bn-jpn.elf, see README.md)
+#   make build             compile and link build/bn.elf and the modules, build/modules/<name>.so
+#                          (needs orig/bn-jpn.elf, see README.md); T=<target> builds only bn or one module
 #   make compare REF=main  compare the objects with those built from another commit
 #   make test PS2=<ip>     build the tests and run them on the PS2 at <ip> (docs/testing.md)
 #   make format            format src/ and tests/ with the pinned clang-format
@@ -11,12 +12,12 @@ DOCKER = docker run --rm --platform linux/amd64 $(DOCKER_USER) -v "$(CURDIR):/wo
 
 ## Build
 
-# Check the formatting of src/ and tests/, then compile every unit and link build/bn.elf (tools/build.py).
+# Check the formatting of src/ and tests/, then compile every unit and link build/bn.elf and the
+# modules of config/modules/ (tools/build.py); T="<target> ..." builds only those (bn, top, ...).
 # fetch.py runs on the host because it needs the network (third-party libraries into build/dl/).
 build: format-check
-	@[ -f orig/bn-jpn.elf ] || { echo "error: orig/bn-jpn.elf missing (see Building in README.md)" >&2; exit 2; }
 	@python3 tools/fetch.py
-	@$(DOCKER) python3 tools/build.py
+	@$(DOCKER) python3 tools/build.py $(T)
 
 # Objects that differ from those built from the commit REF (default: main): the units a change touched.
 REF ?= main

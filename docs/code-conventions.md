@@ -90,8 +90,8 @@ memory).
 
 ## 5. Identifiers
 
-`bn` exports every global in its `.dynsym`, and the modules of `bn/modules/` (not in this repository)
-resolve their imports against it: a name in the original's `.dynsym` (`mipsEEel-linux-nm -D orig/bn-jpn.elf`)
+`bn` exports every global in its `.dynsym`, and the modules of `bn/modules/` (`top.so` is in `src/modules/`, the
+others are not in this repository) resolve their imports against it: a name in the original's `.dynsym` (`mipsEEel-linux-nm -D orig/bn-jpn.elf`)
 is not renamed, and the signature of such a function or the layout of such a class does not change. Everything else
 (parameters, locals, fields, file-scope `static`s, macros, typedefs) can be renamed. A name declared in a header is
 renamed together with all its uses in the same commit; renames go in separate commits.

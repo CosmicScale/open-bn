@@ -18,7 +18,8 @@ no compiler produced are extracted from it at build time.
 
 - `bn` is a dynamically linked C++ executable for PS2 Linux (MIPS R5900), not a
   native PS2 program. It loads further modules from `bn/modules/` (music,
-  movies, photos, mail, ...), which are not part of this repository.
+  movies, photos, mail, ...); the ones in this repository are built with it
+  (`top.so`, the Top Menu, so far).
 - Compiler: Sony gcc 2.95.2 (`mipsEEel-linux`, 2.95.2-3a); assembler and linker:
   Sony binutils 2.9EE. Both are rebuilt from the PS2 Linux Kit sources.
 - Linked libraries (SSLeay, SQLite, zlib, libpng, libjpeg, libtiff, libmng,
@@ -79,9 +80,9 @@ compiler with `make sony-gcc`.
 
 | Path | Contents |
 |---|---|
-| `src/` | the Sony code of `bn`, one folder per subsystem (see [`src/README.md`](src/README.md)) |
+| `src/` | the Sony code of `bn`, one folder per subsystem, and of its modules in `src/modules/` (see [`src/README.md`](src/README.md)) |
 | `ref/` | third-party libraries, as upstream sources plus the changes Sony's build had |
-| `config/` | the compilation units in link order with their flags, the assets taken from the original |
+| `config/` | the compilation units in link order with their flags (a module's in `config/modules/<name>/`), the assets taken from the original |
 | `docker/` | Dockerfiles and patches that rebuild the Sony toolchain |
 | `tests/` | tests of `bn`'s code that run on the console (`make test`, see [`docs/testing.md`](docs/testing.md)) |
 | `tools/` | the build (`tools/build.py`), the object comparison (`tools/compare.py`), the tests (`tools/test.py`), the formatter and the setup scripts |
@@ -93,7 +94,7 @@ compiler with `make sony-gcc`.
 Change the sources, then:
 
 ```sh
-make build          # build/bn.elf
+make build          # build/bn.elf and the modules, build/modules/<name>.so (T=<target> for one)
 make compare        # the units whose object changed, against main (REF=<commit> for another)
 make test PS2=<ip>  # run the tests on the PS2 at <ip>
 ```

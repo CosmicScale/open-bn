@@ -4,6 +4,10 @@
 `tools/fetch.py`) and runs `tools/build.py` in the `open-bn-env` container. Everything it writes is
 under `build/` and `assets/`, both gitignored.
 
+It builds `bn` and its modules, the shared objects `bn` loads from `/opt0/bn/modules/`: every directory
+`config/modules/<name>/` with a `units.txt` is one. `make build T=<target>` builds only `bn` or one
+module (`T="bn top"` for several).
+
 ## Steps of `tools/build.py`
 
 1. **Assets.** The rows of `config/assets.txt` are cut from `orig/bn-jpn.elf` into `assets/`, as the
@@ -23,6 +27,19 @@ The libraries are the ones `bn` runs with: libc, ld.so, libstdc++, libocm and li
 Definitive Patch, and libm, libpthread, libdl and libcrypt of the PS2 Linux Kit (the same glibc
 2.2.2). `-E` exports every global: the modules of `bn/modules/` resolve symbols against `bn`.
 `__DATE__` and `__TIME__` are fixed, so a build does not depend on when it runs.
+
+## Modules
+
+A module is built like `bn` from `config/modules/<name>/units.txt`, without assets: its objects go
+into `build/modules/<name>/obj/`, and ld links them with `-shared -soname <name>.so` between the kit's
+`crti.o`/`crtbegin.o` and `crtend.o`/`crtn.o`, as `g++ -shared` does, into `build/modules/<name>.so`.
+No library is linked: the undefined symbols of a module (functions of `bn` such as `amx_GetAddr`, and
+of libc, libpthread and libstdc++) are resolved by `bn` and the libraries it has already loaded.
+
+Each module carries its own copy of the libgcc members it uses (exception handling, RTTI,
+`operator delete`): they are built from `src/modules/libgcc/` and `ref/gcc-2.95.2/` with the flags of
+gcc's libgcc build. A new module gets its sources in `src/modules/<name>/` and its `units.txt`,
+which lists those shared members too.
 
 ## Adding a unit
 
@@ -50,6 +67,13 @@ cp /opt0/bn/bn /opt0/bn/bn.orig       # once: keep the installed one
 wget -O /opt0/bn/bn.new http://<pc>:8000/bn.elf && chmod 755 /opt0/bn/bn.new && mv /opt0/bn/bn.new /opt0/bn/bn
 ```
 
-(`python3 -m http.server -d build` on the PC serves `build/bn.elf`.) Then restart the console.
-To go back, copy `bn.orig` over `bn`. What a change touches is tried on the console, together with
+(`python3 -m http.server -d build` on the PC serves `build/bn.elf`.) A module goes next to it, in
+`/opt0/bn/modules/`:
+
+```sh
+cp /opt0/bn/modules/top.so /opt0/bn/modules/top.so.orig
+wget -O /opt0/bn/modules/top.so.new http://<pc>:8000/modules/top.so && mv /opt0/bn/modules/top.so.new /opt0/bn/modules/top.so
+```
+
+Then restart the console. To go back, copy the `.orig` files back. What a change touches is tried on the console, together with
 what is always on the path: the main menu, the Game Collection, launching a game.
