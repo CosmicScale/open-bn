@@ -28,6 +28,9 @@ no compiler produced are extracted from it at build time.
 - Original executable: `orig/bn-jpn.elf`, SHA1
   `0bb9908a1d423edc77d116514003866898e5cf6b`. The build takes from it only the
   bytes no compiler produces (see [`docs/building.md`](docs/building.md)).
+- The pages of the interface run Small scripts (`/opt0/bn/script/*.bnx`): their
+  sources are in `src/bnx/`, with the Small 2.1.0 compiler in `docker/small/`
+  (see [`docs/scripts.md`](docs/scripts.md)).
 
 ## Building
 
@@ -64,7 +67,7 @@ cd ..
 Set up the toolchain and build:
 
 ```sh
-make bootstrap      # Docker image, Sony gcc and binutils, PS2 Linux Kit headers
+make bootstrap      # Docker image, Sony gcc and binutils, Small compiler, PS2 Linux Kit headers
 make build          # compile every unit and link build/bn.elf
 ```
 
@@ -74,19 +77,21 @@ archive.org. The first `make build` also downloads the PSBBN Definitive Patch
 (143 MB) for the libraries `bn` links against, and Unity for the tests, and
 compiles all 1,130 units (under a minute on 16 cores); after that only what
 changed is rebuilt. After a pull that changes `docker/patches/`, rebuild the
-toolchain with `make sony-gcc sony-binutils`.
+toolchain with `make sony-gcc sony-binutils` (`make small` after one that changes
+`docker/small/`).
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
 | `src/` | the Sony code of `bn`, one folder per subsystem, and of its modules in `src/modules/` (see [`src/README.md`](src/README.md)) |
+| `src/bnx/` | the Small scripts of the interface (`/opt0/bn/script/*.bnx`), as sources (see [`docs/scripts.md`](docs/scripts.md)) |
 | `ref/` | third-party libraries, as upstream sources plus the changes Sony's build had |
 | `config/` | the compilation units in link order with their flags (a module's in `config/modules/<name>/`), the assets taken from the original |
-| `docker/` | Dockerfiles and patches that rebuild the Sony toolchain |
+| `docker/` | Dockerfiles and patches that rebuild the Sony toolchain and the Small compiler |
 | `tests/` | tests of `bn`'s code that run on the console (`make test`, see [`docs/testing.md`](docs/testing.md)) |
 | `tools/` | the build (`tools/build.py`), the object comparison (`tools/compare.py`), the tests (`tools/test.py`), the formatter and the setup scripts |
-| `docs/` | how the build works and how to try a build on the console, the tests, DNAS, code conventions |
+| `docs/` | how the build works and how to try a build on the console, the tests, the scripts, DNAS, code conventions |
 | `orig/`, `assets/`, `build/` | your executable, extracted data, build output (all gitignored) |
 
 ## Changing the code
@@ -111,5 +116,6 @@ How the code is organized and how to read it: [`src/README.md`](src/README.md).
 
 The tools, build files and documentation written for this project, and the changes and additions
 made to `src/` here, are under the MIT license ([`LICENSE`](LICENSE)). The sources in `src/` reconstruct a
-program by Sony Computer Entertainment, over which no rights are claimed or granted; the libraries in `ref/`
-and the toolchain sources in `docker/` keep their own licenses.
+program by Sony Computer Entertainment, over which no rights are claimed or granted; the libraries in `ref/`,
+the toolchain sources in `docker/` and the Small toolkit's `core.inc` and `float.inc` in `src/bnx/include/`
+(`smallkit-license.txt`) keep their own licenses.
