@@ -8,7 +8,7 @@
 DOCKER_USER = --user $(shell id -u):$(shell id -g) -e HOME=/tmp
 DOCKER = docker run --rm --platform linux/amd64 $(DOCKER_USER) -v "$(CURDIR):/work" open-bn-env
 
-.PHONY: build compare test format format-check env venv need-buildx sony-gcc sony-binutils kit headers bootstrap
+.PHONY: build compare test format format-check env venv need-buildx sony-gcc sony-binutils small kit headers bootstrap
 
 ## Build
 
@@ -44,8 +44,8 @@ format-check:
 
 ## Toolchain setup
 
-# Everything a new machine needs: the Docker image, Sony gcc and binutils, the PS2 Linux Kit headers.
-bootstrap: need-buildx env sony-gcc sony-binutils kit headers
+# Everything a new machine needs: the Docker image, Sony gcc and binutils, the Small compiler, the PS2 Linux Kit headers.
+bootstrap: need-buildx env sony-gcc sony-binutils small kit headers
 	@echo "bootstrap  done; build with: make build"
 
 env:
@@ -58,7 +58,7 @@ venv:
 	@.venv/bin/pip install -q --disable-pip-version-check clang-format==$$(python3 tools/format.py --version) telnetlib3==5.0.3
 	@echo "venv       $$(.venv/bin/clang-format --version)"
 
-# docker build --output (sony-gcc, sony-binutils) needs BuildKit: the buildx plugin.
+# docker build --output (sony-gcc, sony-binutils, small) needs BuildKit: the buildx plugin.
 need-buildx:
 	@docker buildx version >/dev/null 2>&1 || { echo "error: docker buildx not found; install it (Ubuntu/Mint: sudo apt install docker-buildx)" >&2; exit 2; }
 
@@ -67,6 +67,10 @@ sony-gcc: need-buildx
 
 sony-binutils: need-buildx
 	cd docker && docker build --platform linux/amd64 -f Dockerfile.sonybinutils --output=toolchain/sonybinutils .
+
+# The Small 2.1.0 compiler of the scripts (docker/small/README.md) into docker/toolchain/small/sc.
+small: need-buildx
+	cd docker && docker build --platform linux/amd64 -f Dockerfile.small --output=toolchain/small .
 
 # glibc and kernel headers from the PS2 Linux Kit disc 2 (archive.org) into docker/kit/rootfs.
 kit:
