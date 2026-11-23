@@ -225,7 +225,9 @@ its place changes the code. A constant never has a value or a tag other than the
 
 ### Verification
 
-The script compiles ([`scripts.md`](scripts.md)) with the same compiler warnings, and no placeholder left in what was renamed: a
-script renamed as a whole has none left (`func_<hex>`, `g_<hex>`, `static_<hex>`, `label_<hex>`, `var<n>`,
-`arg<n>`, `p<n>`, and the numbered helper names `<file>_<k>`, `<file>_g<k>`, `<file>_sub<k>`); renaming a shared
-helper changes only its name in the files that use it. Renames go in their own commits (section 5).
+Compile the script before and after the change with the command of [`scripts.md`](scripts.md), and compare. A
+rename, a comment or a constant in place of its number gives the same `.amx` byte for byte and the same compiler
+warnings; a change to what the script does changes only what it meant to. No placeholder is left in what was
+renamed: a script renamed as a whole has none left (`func_<hex>`, `g_<hex>`, `static_<hex>`, `label_<hex>`,
+`var<n>`, `arg<n>`, `p<n>`, and the numbered helper names `<file>_<k>`, `<file>_g<k>`, `<file>_sub<k>`); renaming
+a shared helper changes only its name in the files that use it. Renames go in their own commits (section 5).

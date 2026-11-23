@@ -85,13 +85,13 @@ toolchain with `make sony-gcc sony-binutils` (`make small` after one that change
 | Path | Contents |
 |---|---|
 | `src/` | the Sony code of `bn`, one folder per subsystem, and of its modules in `src/modules/` (see [`src/README.md`](src/README.md)) |
+| `src/bnx/` | the Small scripts of the interface (`/opt0/bn/script/*.bnx`), as sources (see [`docs/scripts.md`](docs/scripts.md)) |
 | `ref/` | third-party libraries, as upstream sources plus the changes Sony's build had |
 | `config/` | the compilation units in link order with their flags (a module's in `config/modules/<name>/`), the assets taken from the original |
-| `src/bnx/` | the Small scripts of the interface (`/opt0/bn/script/*.bnx`), as sources (see [`docs/scripts.md`](docs/scripts.md)) |
 | `docker/` | Dockerfiles and patches that rebuild the Sony toolchain and the Small compiler |
 | `tests/` | tests of `bn`'s code that run on the console (`make test`, see [`docs/testing.md`](docs/testing.md)) |
 | `tools/` | the build (`tools/build.py`), the object comparison (`tools/compare.py`), the tests (`tools/test.py`), the formatter and the setup scripts |
-| `docs/` | how the build works and how to try a build on the console, the tests, DNAS, code conventions |
+| `docs/` | how the build works and how to try a build on the console, the tests, the scripts, DNAS, code conventions |
 | `orig/`, `assets/`, `build/` | your executable, extracted data, build output (all gitignored) |
 
 ## Changing the code
