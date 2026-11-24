@@ -167,7 +167,7 @@ int TRYInstManager::LoadInstDef()
 
 	if (_sce_dnas_ar_nokey_read_format(name, &fmt) != 0)
 		goto fail;
-	if (strncmp("dnas.dat", name + 3, 8) == 0) {
+	if (strlen(name) >= 3 && strncmp("dnas.dat", name + 3, 8) == 0) {
 		if (loadDNASdat(&fmt) < 0)
 			goto fail;
 		skipped = fmt.size;
