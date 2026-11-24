@@ -60,16 +60,6 @@ anything else to the DNAS2 reader. Zero bytes after the last member end the arch
 A plaintext member cannot be personalized (attribute other than 0), since that needs the DNAS2
 session.
 
-A personalized member of an encrypted package is read through the DNAS2 session. Opening it first
-checks that a flag file of the DNAS identity exists on the console, and fails with
-`SCE_DNAS_ERR_BEFORE_SERVICE` (-102) when it does not. `TRYInstaller::All()` ignores that result and
-carries on; the install then fails with -27605.
-
-In the two packages looked at, `system.cnf` boots a DNAS loader (`BOOT2` is `dnasload.elf` or
-`dnasldnk.elf`) and names the game in `DNASBOOT2`. The one without personalized members installs,
-and goes back to PSBBN when started. Its loader is a KELF and its game executable is stored
-encrypted; where the boot stops was not traced.
-
 ## Chloe
 
 `bn` reboots the PS2 out of Linux through the `Chloe*` library (`src/chloe/`, 26 units; the names are
