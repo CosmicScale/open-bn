@@ -4,9 +4,9 @@
 `tools/fetch.py`) and runs `tools/build.py` in the `open-bn-env` container. Everything it writes is
 under `build/` and `assets/`, both gitignored.
 
-It builds `bn` and its modules, the shared objects `bn` loads from `/opt0/bn/modules/`: every directory
-`config/modules/<name>/` with a `units.txt` is one. `make build T=<target>` builds only `bn` or one
-module (`T="bn top"` for several).
+It builds `bn`, its modules, the shared objects `bn` loads from `/opt0/bn/modules/` (every directory
+`config/modules/<name>/` with a `units.txt` is one), and the scripts of the pages. `make build
+T=<target>` builds only `bn`, one module or the scripts (`script`); `T="bn top"` for several.
 
 ## Steps of `tools/build.py`
 
@@ -22,6 +22,12 @@ module (`T="bn top"` for several).
    built-in script, the kit's `crt1.o`/`crti.o`/`crtbegin.o`, the units in the order of
    `config/units.txt`, then `crtend.o`/`crtn.o`, libgcc and the libraries; the result is stripped
    into `build/bn.elf` (`build/bn.unstripped.elf` and `build/bn.map` stay next to it).
+4. **Scripts.** Every `src/bnx/<path>.sma` is compiled by the Small compiler (`make small`, options
+   in `docs/scripts.md`) into `build/script/<path>.amx`, a plain AMX module, in a work directory of
+   its own under `build/bnx/`. A script is rebuilt only if its command changed or its source, an
+   include file or the compiler is newer than its module. All of them are packed again at every
+   build into `build/script.tar.gz`, with fixed owner, mode and times. `make compare` does not
+   compare the scripts.
 
 The libraries are the ones `bn` runs with: libc, ld.so, libstdc++, libocm and libfreetype of the
 Definitive Patch, and libm, libpthread, libdl and libcrypt of the PS2 Linux Kit (the same glibc
@@ -83,6 +89,24 @@ cd /opt0/bn/modules
 wget -O top.so.new http://<pc>:8000/modules/top.so && chmod 700 top.so.new && mv top.so.new top.so
 ```
 
-`top.so` is loaded by the Top Menu (`/opt0/bn/script/top.xml`) at every boot. Then restart the
-console. To go back, copy the `.orig` files back. What a change touches is tried on the console,
-together with what is always on the path: the main menu, the Game Collection, launching a game.
+`top.so` is loaded by the Top Menu (`/opt0/bn/script/top.xml`) at every boot.
+
+The scripts go next to the encrypted modules, in `/opt0/bn/script/`, and run where a page names
+them: `<SCRIPT src="../parts/album_item.amx" ...>` (`docs/scripts.md`). The page XMLs come with
+the language pack of the Definitive Patch and name the encrypted modules; to try the scripts, the
+second line below keeps the XMLs once and the last one makes every `<SCRIPT>` name its `.amx`:
+
+```sh
+cd /opt0/bn/script
+[ -e ../script-xml.orig.tar.gz ] || find . -name '*.xml' | tar czf ../script-xml.orig.tar.gz -T -   # once
+wget -O /tmp/script.tar.gz http://<pc>:8000/script.tar.gz && tar xzf /tmp/script.tar.gz && rm /tmp/script.tar.gz
+find . -name '*.xml' | xargs perl -pi -e 's{(<SCRIPT\b[^>]*\bsrc=")([^"]+?)(?:\.amx)?"}{$1$2.amx"}g'
+```
+
+Only a `bn` that loads plain modules opens these pages, so install it first, and open no page
+until the console has restarted: the `bn` still running cannot load them. Then restart the
+console. To go back, put the XMLs back first (`tar xzf ../script-xml.orig.tar.gz` in
+`/opt0/bn/script`), then copy the `.orig` files back; the `.amx` files can stay.
+
+What a change touches is tried on the console, together with what is always on the path: the
+main menu, the Game Collection, launching a game.

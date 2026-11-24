@@ -9,8 +9,36 @@ each of the 227 scripts of the Definitive Patch, with the include files they sha
 
 The sources come from [MatteoTurri/open-bn](https://github.com/MatteoTurri/open-bn), where a
 gate checks that the Small compiler turns each of them back into the original module byte for
-byte. `bn` does not run a module built here yet: it accepts only `.bnx` files that carry
-Sony's DNAS signature.
+byte.
+
+`make build` compiles them (`make build T=script` alone) into `build/script/<path>.amx`, plain
+AMX modules, packed into `build/script.tar.gz` for the console (`docs/building.md`).
+
+A page names the module it loads in a `<SCRIPT>` element, and the extension says what it is:
+
+- `src="../parts/album_item.amx"`: a plain module, which `bn` loads as it is (`acceptPlainAmx`,
+  `src/script/thxmlloader.cpp`);
+- `src="../parts/album_item"` (the form of Sony's pages, to which `bn` adds `.bnx`) or `.bnx`: a
+  module encrypted and signed by Sony, verified and decrypted as before. The network channels
+  load theirs this way.
+
+A plain module is refused unless it is a whole AMX program (the AMX signature, file version 6, a
+size in its header equal to the size of the file, and its blocks in order within the memory of the
+program), it is in `/opt0/bn/script/` once `//`, `/../` and symbolic links are resolved (the file
+read is the one checked) (Sony's pages link each other as `file://opt0/...`), and the page
+would decrypt its modules with the local key, that is, it comes neither from the network nor from
+a CD-ROM. The limits follow from the private natives (booting, files, system update), which every
+page that does not come from the network gets:
+
+- a plain module anywhere else (a disc, a USB device, `pfs:`, the cache of the network pages) is
+  refused;
+- a page from a disc or from the network cannot load the scripts of `bn`, as it could not before,
+  since they were encrypted with the local key;
+- a plain module in `/opt0/bn/script/` runs without a signature, so whatever can write there can
+  run code with the private natives, as whatever can write `/opt0/bn/bn` already could. The system
+  update writes there too: what it installs is only as trustworthy as the server it comes from,
+  until updates carry a signature that `bn` checks
+  ([issue #1](https://github.com/CosmicScale/open-bn/issues/1)).
 
 ## The compiler
 

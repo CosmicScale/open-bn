@@ -1,7 +1,8 @@
 # open-bn. Most targets run inside the open-bn-env Docker image (make env).
 #
-#   make build             compile and link build/bn.elf and the modules, build/modules/<name>.so
-#                          (needs orig/bn-jpn.elf, see README.md); T=<target> builds only bn or one module
+#   make build             compile and link build/bn.elf and the modules, build/modules/<name>.so, and
+#                          compile the scripts into build/script.tar.gz (needs orig/bn-jpn.elf, see
+#                          README.md); T=<target> builds only bn, one module or the scripts (script)
 #   make compare REF=main  compare the objects with those built from another commit
 #   make test PS2=<ip>     build the tests and run them on the PS2 at <ip> (docs/testing.md)
 #   make format            format src/ and tests/ with the pinned clang-format
@@ -13,7 +14,8 @@ DOCKER = docker run --rm --platform linux/amd64 $(DOCKER_USER) -v "$(CURDIR):/wo
 ## Build
 
 # Check the formatting of src/ and tests/, then compile every unit and link build/bn.elf and the
-# modules of config/modules/ (tools/build.py); T="<target> ..." builds only those (bn, top, ...).
+# modules of config/modules/, and compile the scripts of src/bnx/ (tools/build.py); T="<target> ..."
+# builds only those (bn, top, script, ...).
 # fetch.py runs on the host because it needs the network (third-party libraries into build/dl/).
 build: format-check
 	@python3 tools/fetch.py
