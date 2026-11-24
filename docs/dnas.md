@@ -44,7 +44,28 @@ call to the shims, and the hidden strings are ordinary literals. The shims and t
 tables are not part of this build; the scrambling functions still are, but nothing calls them.
 
 The PSBBN Definitive Patch disables the DNAS checks (`default_isp.dat` removed from
-`__contents/bn.conf`), so the DNAS code itself is not reached either.
+`__contents/bn.conf`), so the authentication code is not reached either. The package reader below
+still is: installing a download package goes through the DNAS2 code.
+
+### Download packages
+
+The archive inside a download package (`.pkg`, read by `src/install/`) goes through
+`src/dnas/dnas_ar.c`. After its 16-byte header, Sony's packages hold an encrypted stream that starts
+with the word `0x20005`: `bn` then loads the DNAS2 profile and reads the members through the DNAS2
+record reader (`src/dnas/dnas2read.c`). A package whose members are stored in plaintext starts
+with its first member instead: each member is a 24-byte header (type 1 directory or 2 file,
+attribute, name length, reserved, 64-bit size), the name and the body, read straight from the file.
+`bn` reads the archive as plaintext when the stream starts with a valid member header, and hands
+anything else to the DNAS2 reader. Zero bytes after the last member end the archive.
+A plaintext member cannot be personalized (attribute other than 0), since that needs the DNAS2
+session.
+
+A personalized member of an encrypted package is decrypted through the DNAS2 session, which needs a
+console authenticated by the DNAS servers. Without that, opening the session fails with
+`SCE_DNAS_ERR_BEFORE_SERVICE` (-102); `TRYInstaller::All()` does not check it, reads a few hundred
+bytes of the member and then fails on the next member header with -27605. Packages without
+personalized members install, but their games start through a DNAS loader (`dnasload.elf`,
+`dnasldnk.elf`) that decrypts the game's executable at boot.
 
 ## Chloe
 
