@@ -6,6 +6,8 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <limits.h>
 #include <vector>
 #include "http/httpfile.h"
 #include "xml/xml_filedescriptor.h"
@@ -357,6 +359,68 @@ fail:
 	return 0;
 }
 
+/* Where the scripts of bn are installed. */
+#define LOCAL_SCRIPT_DIR "/opt0/bn/script/"
+
+/* The pages whose modules are encrypted with the local key: neither from the
+   network nor from a CD-ROM (script_key). */
+static bool usesLocalKey(const string &uri)
+{
+	return !isNetworkUri(uri.c_str()) && !isCdromPath(uri.c_str());
+}
+
+/*
+ * A module named "<path>.amx" is a plain AMX program, loaded as it is: the
+ * scripts of bn, built from their sources. Any other module is encrypted and
+ * signed ("<path>.bnx", the extension the loader adds when the page gives
+ * none) and goes through the DNAS decryption. Since every page that does not
+ * come from the network gets the private natives, a plain module is accepted
+ * only from LOCAL_SCRIPT_DIR, once "//", "/../" and symbolic links are
+ * resolved ("file://opt0/..." links are common), and only for a page that
+ * would decrypt its modules with the local key: a page from a disc or from the
+ * network can no more run them than before. The file must also be a whole
+ * program: the AMX signature, file version 6 and a size in the header equal
+ * to the size of the file.
+ */
+static bool isAmxName(const string &src)
+{
+	return src.length() >= 4 && strcasecmp(src.c_str() + src.length() - 4, ".amx") == 0;
+}
+
+/* The real path of a plain module path for the page pageUri, in real (PATH_MAX
+   + 1 bytes): 1 when it may be loaded, 0 when it may not, -1 when the file is
+   missing. The module is then read from real, the path that was checked. */
+static int plainAmxPath(const string &pageUri, const string &path, char *real)
+{
+	if (!usesLocalKey(pageUri) || path.length() == 0 || path[0] != '/')
+		return 0;
+	if (realpath(path.c_str(), real) == 0)
+		return errno == ENOENT ? -1 : 0;
+	return strncmp(real, LOCAL_SCRIPT_DIR, sizeof(LOCAL_SCRIPT_DIR) - 1) == 0;
+}
+
+/* A whole program: the AMX signature, file version 6, the size of the file in
+   the header, and blocks that lie in order within the memory of the program,
+   which Script::LoadModule and LoadProgram allocate (stp bytes) and fill with
+   the file. */
+static bool wholeAmx(const void *img, int size)
+{
+	AMX_HEADER hdr;
+
+	if (size < (int)sizeof(hdr))
+		return false;
+	memcpy(&hdr, img, sizeof(hdr));
+	return hdr.magic == AMX_MAGIC && hdr.file_version == 6 && hdr.size == size && (int)sizeof(hdr) <= hdr.cod
+	    && hdr.cod <= hdr.dat && hdr.dat <= hdr.hea && hdr.hea <= hdr.stp && hdr.size <= hdr.stp;
+}
+
+bool acceptPlainAmx(const string &pageUri, const string &path, const void *img, int size)
+{
+	char real[PATH_MAX + 1];
+
+	return plainAmxPath(pageUri, path, real) == 1 && wholeAmx(img, size);
+}
+
 static void reset_xmlload_ramdisk();
 static int setup_xmlload_ramdisk();
 static int run_ps2cpnc(const char *firstArg, ...);
@@ -570,7 +634,7 @@ static string script_key(const string &uri)
 	} else if (isCdromPath(uri.c_str())) {
 		key = "ovLkZlt2oaLkAQVdqaOiXmA0ot~~";
 	} else {
-		key = "HGAcGaMdFKp5qN~~";
+		key = "HGAcGaMdFKp5qN~~"; /* usesLocalKey */
 	}
 
 	buf = (char *)malloc(key.length() + 1);
@@ -854,7 +918,7 @@ int thXmlLoader::threadProc()
 		return 0;
 	m_key = script_key(base);
 
-	/* Walk the <SCRIPT> elements and load the .bnx modules. */
+	/* Walk the <SCRIPT> elements and load their modules. */
 	{
 		NodeList list = m_document.getElementsByTagName(XMLString("SCRIPT", false));
 		unsigned long i;
@@ -875,7 +939,7 @@ int thXmlLoader::threadProc()
 
 						src = GetFullPath(m_dir, src, m_clientPsmlVersion);
 						bnx = same_text_nocase(StrRight(src, 4), ".bnx");
-						if (bnx != 0)
+						if (bnx != 0 && !isAmxName(src))
 							src += ".bnx";
 						/* Fetch of the module: a single pass. */
 						for (;;) {  /* redundant as written */
@@ -901,16 +965,37 @@ int thXmlLoader::threadProc()
 								if (m_imageMap.find(id) == m_imageMap.end()) {
 									int isize;
 									unsigned int n;
-									void *img = load_file(url.c_str(), &isize, 0);
+									bool plain = isAmxName(src);
+									char real[PATH_MAX + 1];
+
+									if (plain) {
+										int r = plainAmxPath(base, url, real);
+
+										if (r <= 0) {
+											m_resultCode =
+											    r < 0 ? 404 : 0xfffea067;
+											return 0;
+										}
+									}
+									void *img = load_file(
+									    plain ? real : url.c_str(), &isize, 0);
 
 									if (img == 0) {
 										m_resultCode = 404;
 										return 0;
 									}
-									if (__sce_dnas2_symbol60010(isize,
-									        (unsigned char *)img, m_key.length(),
-									        (const unsigned char *)m_key.c_str(),
-									        &n)
+									if (plain) {
+										if (!wholeAmx(img, isize)) {
+											m_resultCode = 0xfffea067;
+											free(img);
+											return 0;
+										}
+									} else if (__sce_dnas2_symbol60010(isize,
+									               (unsigned char *)img,
+									               m_key.length(),
+									               (const unsigned char *)
+									                   m_key.c_str(),
+									               &n)
 									    != 0) {
 										m_resultCode = 0xfffea06d;
 										free(img);
