@@ -45,7 +45,7 @@ static void test_missing_file_keeps_built_in_labels(void)
 	TEST_ASSERT_EQUAL_STRING("Delete", GetText(0));
 	TEST_ASSERT_EQUAL_STRING("Back", GetText(1));
 	TEST_ASSERT_EQUAL_STRING("Enter", GetText(2));
-	TEST_ASSERT_EQUAL_STRING("変換", GetText(3));
+	TEST_ASSERT_EQUAL_STRING("Convert", GetText(3));
 }
 
 static void test_labels_from_text_elements(void)
