@@ -1,6 +1,6 @@
 /*
  * DNAS2Sysupdater: applies the RPM section of a DNAS2 system update
- * (signature checks, filesystem remounts, package installs).
+ * (signature checks and package installs).
  */
 
 #include "dnas2sysupdater.h"
@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/mount.h>
 #include <sys/wait.h>
 
 #include "lib/scepfsd.h"
@@ -22,37 +21,20 @@ DNAS2Sysupdater::DNAS2Sysupdater(DNAS2SysupManager *manager)
 DNAS2Sysupdater::~DNAS2Sysupdater()
 {}
 
-// SysupRPM: validate the section, check the signatures of the RPM data of the section, remount the
-// filesystems read-write, install the packages and remount read-only. A
-// failed install still remounts, but returns the install error.
+// SysupRPM: validate the section, check the RPM signatures and install the packages.
 int DNAS2Sysupdater::SysupRPM(sysupCommandList *list)
 {
 	int ret;
 
 	ret = checkDataTagNumOnList(list, 1001, 3001);
 	if (ret < 0)
-		goto done;
+		return ret;
 
 	ret = doSysupRPMDataCheckSig(list, 1001, 3001);
 	if (ret < 0)
-		goto done;
+		return ret;
 
-	ret = doReiserfsRemount(1);
-	if (ret < 0)
-		goto done;
-
-	ret = doSysupRPMDataRPM(list, 1001, 3001);
-	if (ret < 0) {
-		doReiserfsRemount(0);
-		goto done;
-	}
-
-	ret = doReiserfsRemount(0);
-	if (ret >= 0)
-		return 0;
-
-done:
-	return ret;
+	return doSysupRPMDataRPM(list, 1001, 3001);
 }
 
 int DNAS2Sysupdater::SysupKernel(sysupCommandList *list)
@@ -129,43 +111,6 @@ loopcheck:;
 	} while (list->tag != idxB);
 
 done:
-	return 0;
-}
-
-// doReiserfsRemount: remount "/" read-only (mode 0) or read-write (mode 1),
-// then /opt0, /net and /bntmp the same way. Returns 0 or -1002.
-int DNAS2Sysupdater::doReiserfsRemount(int mode)
-{
-	unsigned long flags;
-	const char *data;
-
-	switch (mode) {
-	case 0:
-		flags = 0xc0ed0020;
-		data = "suidimmu";
-		break;
-	case 1:
-		flags = 0xc0ed0022;
-		data = "";
-		break;
-	default:
-		return -1002;
-	}
-
-	if (mount("/dev/hda1", "/", "reiserfs", flags, data) < 0)
-		goto fail;
-	if (mount("/dev/hda4", "/opt0", "reiserfs", flags, data) < 0)
-		goto fail;
-	if (mount("/dev/hda5", "/net", "reiserfs", flags, data) < 0)
-		goto fail;
-	if (mount("/dev/hda6", "/bntmp", "reiserfs", flags, data) < 0)
-		goto fail;
-
-	return 0;
-
-fail:
-	return -1002;
-
 	return 0;
 }
 

@@ -11,10 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "lib/resuid.h"
-#include <sys/ioctl.h>
-#include <sys/mount.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <pthread.h>
 #include <signal.h>
 #include <string>
@@ -75,85 +72,6 @@ static int s_tmProgress;       /* result of the last run */
 static int s_tmMode;           /* 0 = download the package, nonzero = fetch the update info */
 static int s_tmRunning;        /* nonzero while the thread runs */
 static int s_tmDone;           /* the update info changed */
-
-/*
- * Creates (or recreates) the APA partition "__linux.<part>" and formats it as
- * reiserfs.
- */
-static int MkfsBntmp(int part, const char *size, int nsub, const char *fpwd, const char *rpwd, int mode)
-{
-	int pfd[2];
-	char path[128];
-	int status;
-	int fd;
-	int pid;
-	int n = 0;
-
-	if (strlen(size) >= 5 || strlen(fpwd) >= 9 || strlen(rpwd) >= 9)
-		return 1;
-
-	scepfsInit();
-	sprintf(path, "hdd0:__linux.%d", part);
-	fd = scepfsOpen(path, 1);
-	if (fd >= 0) {
-		n = scepfsIoctl2(fd, 0x6803, 0, 0, 0, 0);  /* number of sub-partitions */
-		if (n < 0) {
-			scepfsExit();
-			return -1;
-		}
-		scepfsClose(fd);
-		if (mode == 0 && n == nsub) {
-			scepfsExit();
-			return 0;
-		}
-		if (mode == 2)
-			scepfsRemove(path);
-	}
-	sprintf(path, "hdd0:__linux.%d,%s,%s,%s,REISER", part, fpwd, rpwd, size);
-	fd = scepfsOpen(path, 0x203);
-	if (fd < 0) {
-		scepfsExit();
-		return -1;
-	}
-	while (n < nsub) {
-		if (scepfsIoctl2(fd, 0x6801, (void *)size, strlen(size) + 1,  /* add a sub-partition */
-		        0, 0)
-		    < 0) {
-			scepfsClose(fd);
-			sprintf(path, "hdd0:__linux.%d", part);
-			scepfsRemove(path);
-			scepfsExit();
-			return -1;
-		}
-		n++;
-	}
-	scepfsClose(fd);
-	scepfsExit();
-
-	fd = open("/dev/hda", O_RDWR);
-	ioctl(fd, BLKRRPART, 0); /* reread the partition table */
-	close(fd);
-
-	if (pipe(pfd) < 0)
-		return -1;
-	pid = fork();
-	if (pid < 0)
-		return -1;
-	if (pid == 0) {
-		dup2(pfd[0], 0);
-		close(pfd[1]);
-		sprintf(path, "/dev/hda%d", part);
-		execl("/sbin/mkreiserfs", "/sbin/mkreiserfs", "-q", path, 0);
-	} else {
-		char yes[] = "y\n";
-		close(pfd[0]);
-		write(pfd[1], yes, strlen(yes));
-		waitpid(pid, &status, 0);
-	}
-	close(pfd[0]);
-	close(pfd[1]);
-	return n + 1;
-}
 
 /* Switches to root, saving the user ids, and back. */
 
@@ -1066,22 +984,10 @@ static cell AMX_NATIVE_CALL n_sysUpdateGetEura(AMX *amx, cell *params)
 	return ret;
 }
 
-/*
- * sysUpdateMkBntmp(): recreates /bntmp (reformats /dev/hda6 as reiserfs and
- * remounts it) as root, with the BB file access stopped.
- */
+/* Leaves /bntmp as it is and returns 0; sysupdate.bnx calls it before the install. */
 static cell AMX_NATIVE_CALL n_sysUpdateMkBntmp(AMX *amx, cell *params)
 {
-	int r;
-
-	BecomeRoot();
-	BBFileAccessExitCPP();
-	umount("/bntmp");
-	r = MkfsBntmp(6, "128M", 0, "", "", 2);
-	mount("/dev/hda6", "/bntmp", "reiserfs", 512, 0);
-	BBFileAccessInitCPP();
-	RestoreUid();
-	return r;
+	return 0;
 }
 
 AMX_NATIVE_INFO smallext_sysup[] = {
