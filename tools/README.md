@@ -7,8 +7,9 @@ Makefile target shown.
 ## Build (`make build`, `make compare`; docs/building.md)
 
 - **`build.py`** [container] `make build`: assets, compilation of every unit (incremental), link and
-  strip into `build/bn.elf`.
-  - `python3 tools/build.py [-jN] [--compile-only] [--no-assets]`
+  strip into `build/bn.elf` and the modules, compilation of the scripts into `build/script/` and
+  `build/script.tar.gz`.
+  - `python3 tools/build.py [-jN] [--compile-only] [--no-assets] [TARGET ...]`
 - **`compare.py`** [container] `make compare REF=<commit>`: compiles the tree of another commit and lists the
   units whose object differs from the current one.
 - **`fetch.py`** `make build`: downloads the third-party files of the link into `build/dl/` (on the host:

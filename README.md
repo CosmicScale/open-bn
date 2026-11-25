@@ -68,7 +68,7 @@ Set up the toolchain and build:
 
 ```sh
 make bootstrap      # Docker image, Sony gcc and binutils, Small compiler, PS2 Linux Kit headers
-make build          # compile every unit and link build/bn.elf
+make build          # compile and link build/bn.elf and the modules, compile the scripts
 ```
 
 `make bootstrap` takes a few minutes: it builds the toolchain into
@@ -99,7 +99,7 @@ toolchain with `make sony-gcc sony-binutils` (`make small` after one that change
 Change the sources, then:
 
 ```sh
-make build          # build/bn.elf and the modules, build/modules/<name>.so (T=<target> for one)
+make build          # build/bn.elf, build/modules/<name>.so, build/script.tar.gz (T=<target> for one)
 make compare        # the units whose object changed, against main (REF=<commit> for another)
 make test PS2=<ip>  # run the tests on the PS2 at <ip>
 ```

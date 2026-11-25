@@ -4,8 +4,9 @@
 Usage: python3 tools/build.py [-jN] [--compile-only] [--no-assets] [TARGET ...]
        (in the open-bn-env container, from the repository root: `make build [T=<target>]`)
 
-The targets are bn and the modules it loads with dlopen from /opt0/bn/modules/: every directory
-config/modules/<name>/ with a units.txt is one. Without TARGET all of them are built.
+The targets are bn, the modules it loads with dlopen from /opt0/bn/modules/ (every directory
+config/modules/<name>/ with a units.txt is one) and script, the scripts of the pages. Without
+TARGET all of them are built.
 
 1. Assets: every row of config/assets.txt is cut from orig/bn-jpn.elf into assets/<file>, as the
    body of a C initializer that a source #includes. They are never committed.
@@ -22,6 +23,11 @@ go into build/modules/<name>/obj/, and ld -shared links them with the crt files,
 build/modules/<name>.so; every symbol it imports must be defined by build/bn.elf or one of those
 libraries, as bn's dlopen requires.
 
+4. Scripts: every src/bnx/<path>.sma is compiled by the Small compiler (docs/scripts.md) into
+   build/script/<path>.amx, a plain AMX program that bn loads without decrypting it when a page
+   names it, and all of them are packed into build/script.tar.gz, to unpack in /opt0/bn/script/
+   on the console.
+
 --compile-only stops after step 2; --no-assets skips step 1 (tools/compare.py, for the tree of another
 commit, which uses the assets of this checkout). Sources, configuration and outputs are relative to
 the current directory; the toolchain and the kit are those of this checkout.
@@ -30,6 +36,7 @@ import hashlib
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -47,6 +54,10 @@ LIBS = 'build/libs'
 ELF = 'build/bn.elf'
 MODULES = 'config/modules'                              # config/modules/<name>/units.txt
 MODULES_OUT = 'build/modules'
+SCRIPT_SRC = 'src/bnx'                                  # src/bnx/<path>.sma
+SCRIPT_WORK = 'build/bnx'                               # the compiler runs in build/bnx/<path>/
+SCRIPT_OUT = 'build/script'                             # build/script/<path>.amx
+SCRIPT_TAR = 'build/script.tar.gz'
 
 TOOL = f'{ROOT}/docker/toolchain/sony'                  # Sony gcc 2.95.2 (make sony-gcc)
 INC = f'{ROOT}/docker/toolchain/include'                # its headers (make headers)
@@ -56,6 +67,9 @@ AS, LD, STRIP = (f'{BIN}/mipsEEel-linux-{t}' for t in ('as', 'ld', 'strip'))
 # docker/patches/ld-compact-rel-relvaddr.patch links, but writes different bytes at every link
 TOOL_SHA1 = {AS: 'e07c3a4602f51e75a321f83963ce302d624c0b43', LD: 'ccaa3d26986fab487abaf619cfde7c33c7fa6bda'}
 KIT = f'{ROOT}/docker/kit/rootfs'                       # the PS2 Linux Kit (make kit)
+SC = f'{ROOT}/docker/toolchain/small/sc'                # Small 2.1.0 (make small)
+# the options of every script (docs/scripts.md); -i and the paths are added per script
+SC_FLAGS = "-d0 -t0 '-\\' -C+ -P+ '-;+'"
 
 INC_C = f'-nostdinc -Isrc -I{INC}/fixinc -I{INC}/ginclude'
 INC_CXX = (f'-nostdinc -Isrc -I{INC}/fixinc -I{INC}/libstdc++ -I{INC}/libstdc++/stl -I{INC}/libstdc++/std '
@@ -121,12 +135,13 @@ def targets(names=(), root='.'):
     tree whose config/modules/ is listed (tools/compare.py)."""
     m = os.path.join(root, MODULES)
     mods = sorted(d for d in os.listdir(m) if os.path.exists(f'{m}/{d}/units.txt')) if os.path.isdir(m) else []
-    if 'bn' in mods:
-        fail(f'{m}/bn/: a module cannot be named bn')
+    for reserved in ('bn', 'script'):
+        if reserved in mods:
+            fail(f'{m}/{reserved}/: a module cannot be named {reserved}')
     known = ['bn'] + mods
-    bad = [n for n in names if n not in known]
+    bad = [n for n in names if n not in known + ['script']]
     if bad:
-        fail(f'unknown target {", ".join(bad)} (targets: {", ".join(known)})')
+        fail(f'unknown target {", ".join(bad)} (targets: {", ".join(known + ["script"])})')
     return [Target(n) for n in known if not names or n in names]
 
 
@@ -291,6 +306,91 @@ def link_module(name, units, obj):
     return so
 
 
+def scripts():
+    """The sources of the scripts, src/bnx/<path>.sma, as <path>."""
+    out = []
+    for root, _, files in os.walk(SCRIPT_SRC):
+        for f in files:
+            if f.endswith('.sma'):
+                out.append(os.path.relpath(os.path.join(root, f), SCRIPT_SRC)[:-4])
+    return sorted(out)
+
+
+def compile_script(path, includes_mtime):
+    """Compiles src/bnx/<path>.sma into build/script/<path>.amx if needed; returns (compiled, error
+    lines). The compiler writes its assembler file in the current directory and rebuilds its own
+    path from PWD, so it runs in a directory of its own with PWD set. A script is rebuilt when its
+    command changed or the source, one of the include files or the compiler is newer than its program."""
+    src = os.path.abspath(f'{SCRIPT_SRC}/{path}.sma')
+    out = os.path.abspath(f'{SCRIPT_OUT}/{path}.amx')
+    work = os.path.abspath(f'{SCRIPT_WORK}/{path}')
+    cmd = f'{SC} {SC_FLAGS} -i{os.path.abspath(SCRIPT_SRC)}/include {src} -o{out}'
+    try:
+        if open(f'{work}/out.cmd').read() == cmd and \
+                os.path.getmtime(out) >= max(os.path.getmtime(src), includes_mtime):
+            return False, []
+    except OSError:
+        pass
+    os.makedirs(work, exist_ok=True)
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    for f in (out, f'{work}/out.cmd'):
+        if os.path.exists(f):
+            os.remove(f)
+    r = subprocess.run(cmd, shell=True, cwd=work, env=dict(os.environ, PWD=work), capture_output=True, text=True)
+    # 0: no warnings, 1: warnings only (the scripts compile with the warnings they had), 2: errors,
+    # 3: aborted; negative: killed by a signal
+    if r.returncode not in (0, 1) or not os.path.exists(out):
+        err = [l for l in (r.stdout + r.stderr).splitlines() if 'error' in l.lower()][:5]
+        return True, [f'{SCRIPT_SRC}/{path}.sma: compilation failed'] + [f'    {l}' for l in err]
+    data = open(out, 'rb').read()
+    # what the loader of bn checks before loading a plain program (wholeAmx, src/script/thxmlloader.cpp)
+    size, magic, version, cod, dat, hea, stp = (struct.unpack_from('<IHB5xiiii', data) if len(data) >= 56
+                                                else (0, 0, 0, 0, 0, 0, 0))
+    if not (magic == 0xf1e0 and version == 6 and size == len(data) and 56 <= cod <= dat <= hea <= stp
+            and size <= stp):
+        return True, [f'{out}: not a whole AMX program of file version 6']
+    open(f'{work}/out.cmd', 'w').write(cmd)
+    return True, []
+
+
+def pack_scripts(paths):
+    """build/script.tar.gz: build/script/<path>.amx of every script, owned by root, 0644, with a fixed
+    time, so that the same programs give the same archive. Written in full at every build (it takes
+    well under a second), through a temporary file."""
+    import gzip
+    import io
+    import tarfile
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode='w', format=tarfile.GNU_FORMAT) as t:
+        for p in paths:
+            data = open(f'{SCRIPT_OUT}/{p}.amx', 'rb').read()
+            info = tarfile.TarInfo(f'{p}.amx')
+            info.size, info.mode, info.mtime, info.uname, info.gname = len(data), 0o644, 0, 'root', 'root'
+            t.addfile(info, io.BytesIO(data))
+    with open(SCRIPT_TAR + '.tmp', 'wb') as f:
+        f.write(gzip.compress(buf.getvalue(), mtime=0))
+    os.replace(SCRIPT_TAR + '.tmp', SCRIPT_TAR)
+
+
+def build_scripts(jobs):
+    """Step 4; returns the error lines."""
+    if not os.path.exists(SC):
+        fail(f'{SC} missing: run make small')
+    paths = scripts()
+    inc = f'{SCRIPT_SRC}/include'
+    includes_mtime = max([os.path.getmtime(f'{inc}/{f}') for f in os.listdir(inc)] + [os.path.getmtime(SC)])
+    with ThreadPoolExecutor(jobs) as ex:
+        res = list(ex.map(lambda p: compile_script(p, includes_mtime), paths))
+    errs = [l for _, el in res for l in el]
+    built = sum(1 for b, el in res if b and not el)
+    failed = sum(1 for _, el in res if el)
+    print(f'scripts    {len(paths)}, {built} compiled' + (f', {failed} failed' if failed else ''))
+    if not errs:
+        pack_scripts(paths)
+        print(f'packed     {SCRIPT_TAR}')
+    return errs
+
+
 def dynsym(path):
     """{name: defined} of the .dynsym of an ELF file, without the weak undefined symbols."""
     from elftools.elf.elffile import ELFFile
@@ -321,7 +421,10 @@ def main():
     sys.stdout.reconfigure(line_buffering=True)  # in order with the warnings on stderr
     args = sys.argv[1:]
     jobs = next((int(a[2:]) for a in args if a.startswith('-j') and a[2:]), os.cpu_count() or 1)
-    tgts = targets([a for a in args if not a.startswith('-')])
+    names = [a for a in args if not a.startswith('-')]
+    want_scripts = not names or 'script' in names
+    others = [n for n in names if n != 'script']
+    tgts = targets(others) if others or not names else []
     check_toolchain()
     work = [(t, read_units(t.units)) for t in tgts]
     for t, units in work:
@@ -350,6 +453,11 @@ def main():
             print(f'linked     {ELF}')
         else:
             print(f'linked     {link_module(t.name, units, t.obj)}')
+    if want_scripts:
+        errs = build_scripts(jobs)
+        if errs:
+            print('\n'.join(errs), file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == '__main__':

@@ -23,6 +23,10 @@
 #define THXML_POST_FORM      0x08  /* POST the buffer as a form (PSML 1.1) */
 #define THXML_POST_ESCAPED   0x10  /* POST the URL-escaped buffer (PSML 1.0) */
 
+/* Whether a module the page pageUri names as "<path>.amx", read from path (size
+   bytes at img), is loaded as a plain AMX program (thxmlloader.cpp). */
+bool acceptPlainAmx(const string &pageUri, const string &path, const void *img, int size);
+
 class thXmlLoader : public thPosixThread {
 public:
 	thXmlLoader(const string &url, const string &name, const string &script, int mode, int flags, void *cbArg,

@@ -9,7 +9,7 @@ Usage: .venv/bin/python tools/test_ps2.py HOST [--keep]
    Definitive Patch) downloads the programs with wget into /bntmp/test and runs them one by one,
    in the order of tools/test.py, printing their output as it comes;
 3. /bntmp/test is removed, whatever happened (--keep leaves it, with the databases of a program
-   that failed).
+   that failed), and so are the files amx_loader_test writes in /opt0/bn/script/.
 
 A program passes when it exits 0 and prints Unity's summary with OK. Exit 0 if all pass.
 The commands sent are kept short: the shell of the console drops long typed lines.
@@ -39,6 +39,8 @@ _spec.loader.exec_module(_tests)
 OUT, TESTS = _tests.OUT, _tests.TESTS
 
 DIR = '/bntmp/test'
+# what a test writes outside DIR (amx_loader_test), removed whatever happened, --keep or not
+OUTSIDE = '/opt0/bn/script/.amx_loader_test*'
 LOGIN_TIMEOUT = 20
 COMMAND_TIMEOUT = 120
 
@@ -171,6 +173,10 @@ async def main_async(host, keep):
     try:
         failed, ignored = await run_tests(s, url, names)
     finally:
+        try:
+            await s.run(f'rm -f {OUTSIDE}')
+        except (OSError,) + TIMEOUTS:
+            print(f'warning: {OUTSIDE} could not be removed from the console', file=sys.stderr)
         if not keep:
             try:
                 await s.run(f'cd / && rm -rf {DIR}')

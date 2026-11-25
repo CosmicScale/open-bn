@@ -44,6 +44,15 @@ programs from the PC on a random TCP port: a firewall on the PC must let it thro
 - **`gettext_test`**: the pad-help labels of text input (`GetText`, `src/app/gettext.cpp`) read from the
   `TEXT` elements of an `fg.xml` written in `/bntmp/test`, the built-in labels kept when the file
   or an element is missing, and long labels cut to the 31 bytes the system script `fg` has room for.
+- **`amx_loader_test`**: the modules of the pages (`thXmlLoader`, `src/script/thxmlloader.cpp`),
+  loaded as `bn` loads a page, from pages written in `/bntmp/test`. The encrypted `parts/focus.bnx`
+  of the Definitive Patch is decrypted, and its program is the plain module of the other tests,
+  written in `/opt0/bn/script/` under names starting with `.amx_loader_test` (removed at the end,
+  and by the runner whatever happened). A module named `.amx` is loaded as it is, also through
+  `file://opt0/...` and `/../`; it is refused outside `/opt0/bn/script/` (also through a symbolic
+  link), when it is not a whole AMX program (signature, version, size, the blocks within its
+  memory) and for a page from a CD-ROM or the network; a plain program named `.bnx` is decrypted,
+  and fails.
 
 pfsd serves several clients at once, each with its own mount points, so the tests run next to `bn`.
 But pfsd refuses to open a partition raw while another client has it mounted, and `bn` keeps
