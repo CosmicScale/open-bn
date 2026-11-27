@@ -606,7 +606,7 @@ static cell AMX_NATIVE_CALL n_GetSystemParam(AMX *amx, cell *params)
 	case 719:
 		return SysOption.m_autoDiag;
 	case 720:
-		return SysOption.m_padEnter;
+		return SysOption.getPadEnter();
 	case 800:
 		return SysOption.unk_20;
 	}

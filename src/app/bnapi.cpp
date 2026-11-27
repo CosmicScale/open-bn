@@ -194,7 +194,7 @@ int BNAPI::GetSystemParam(int param)
 	case 719:
 		return SysOption.m_autoDiag;
 	case 720:
-		return SysOption.m_padEnter;
+		return SysOption.getPadEnter();
 	default:
 		return 0;
 	}

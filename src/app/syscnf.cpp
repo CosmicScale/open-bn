@@ -2155,7 +2155,7 @@ void syscnf_setSysOpt(bool flag)
 		SysOption.m_atokKeyBind = g_raw.opt.atokKeyBind;
 		SysOption.m_softkbOnOff = g_raw.opt.skbOnOff;
 		SysOption.m_softkbQwerty = g_raw.opt.skbQwerty;
-		SysOption.m_padEnter = g_raw.opt.padEnter;
+		SysOption.setPadEnter(g_raw.opt.padEnter);
 	} else {
 		SysOption.setKeyboardType(g_raw.opt.kbType);
 		SysOption.setKeyboardRepeatWait(g_raw.opt.kbWait);
