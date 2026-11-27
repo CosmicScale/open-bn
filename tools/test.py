@@ -29,6 +29,7 @@ TESTS = {
     'import_disk_test': ['tests/import_disk_test.cpp'],
     'gettext_test': ['tests/gettext_test.cpp'],
     'amx_loader_test': ['tests/amx_loader_test.cpp'],
+    'dnas_ar_test': ['tests/dnas_ar_test.cpp', 'tests/support/fakepfs.cpp'],
 }
 COMMON = ['tests/support/testutil.cpp', f'{UNITY}/unity.c']
 CFLAGS = f'-Itests -I{UNITY}'

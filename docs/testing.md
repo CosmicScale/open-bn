@@ -53,6 +53,10 @@ programs from the PC on a random TCP port: a firewall on the PC must let it thro
   link), when it is not a whole AMX program (signature, version, size, the blocks within its
   memory) and for a page from a CD-ROM or the network; a plain program named `.bnx` is decrypted,
   and fails.
+- **`dnas_ar_test`**: the archive of a download package (`src/dnas/dnas_ar.c`) read from a file on
+  the disk in memory: members stored in plaintext (headers, bodies, skips, zero padding at the end,
+  truncated, personalized or overlong members), and the streams handed to the DNAS2 reader instead:
+  encrypted, truncated, or not starting with a valid member.
 
 pfsd serves several clients at once, each with its own mount points, so the tests run next to `bn`.
 But pfsd refuses to open a partition raw while another client has it mounted, and `bn` keeps

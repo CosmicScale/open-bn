@@ -156,8 +156,10 @@ int __sce_dnas2_symbol65037(unsigned char *inbuf, unsigned int inbufLen, unsigne
 	}
 	if (inbuf == 0) {
 		r = tbl->read_fn(fd, page, 0x8000);
-		if (r != 0x8000)
+		if (r != 0x8000) {
+			r = SCE_DNAS_ERR_HEADER;
 			goto fail;
+		}
 		src = page;
 	} else {
 		src = inbuf;
