@@ -321,7 +321,7 @@ const SUBGROUP_NONE = -1;
 const SUBGROUP_REMOTE = 0;     /* the remote control: CONSOLE_MODEL */
 const SUBGROUP_DVD_PLAYER = 2; /* CONSOLE_DVD_PLAYER: the progressive output */
 
-/* Same as get_sysconf_item of sysconf.inc. */
+/* get_sysconf_item of sysconf.inc, without the Controller group. */
 get_sysconf_item(group, sub, item)
 {
     new notation;
@@ -503,7 +503,7 @@ get_sysconf_item(group, sub, item)
     return -1;
 }
 
-/* Same as set_sysconf_item of sysconf.inc. */
+/* set_sysconf_item of sysconf.inc, without the Controller group. */
 set_sysconf_item(group, sub, item, value)
 {
     switch (group)
