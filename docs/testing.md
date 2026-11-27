@@ -69,6 +69,11 @@ programs from the PC on a random TCP port: a firewall on the PC must let it thro
   The value reaches `SysOption` and `GetSystemParam(720)`; values other than 0 and 1, and `enter`
   outside `[pad]`, are ignored; the natives of the settings page refuse them; `systemini_write`
   writes the whole file, adding `[pad]` to a file without it.
+- **`xml_entity_test`**: the entities of the buttons in the pages (`src/xml/xml_entitydeclmanager.cpp`),
+  parsed as the loader of the pages parses them: `&btn_enter;` and `&btn_back;` give the glyphs of the
+  confirm and back buttons and `&btn_enter_name;` `circle` or `cross`, in attribute values and in the
+  text of an element (one text node, as the scripts read it), with the setting of the moment the page
+  is parsed; the predefined entities of XML are unchanged.
 
 pfsd serves several clients at once, each with its own mount points, so the tests run next to `bn`.
 But pfsd refuses to open a partition raw while another client has it mounted, and `bn` keeps
