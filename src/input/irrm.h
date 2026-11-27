@@ -8,7 +8,7 @@
 class IRrm {
 public:
 	/* 0x00 */ int m_stat;
-	/* 0x04 */ unsigned short m_deviceId;  /* remote model: 2362 or 7002 */
+	/* 0x04 */ unsigned short m_deviceId;  /* key set: 2362 DVD player, 7002 controller */
 	/* 0x06 */ char m_index;  /* scancode, indexes the code tables */
 	/* 0x07 */ char m_pad7;
 	/* 0x08 */ int m_bypass;

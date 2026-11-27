@@ -1,6 +1,7 @@
 /*
  * IRrm: the IR remote control of the BB Navigator (not polymorphic).
- * m_deviceId is the remote model (2362 or 7002); m_index (0..127) indexes the
+ * m_deviceId is the key set (2362 the DVD player keys, 7002 the controller
+ * keys, as sceRm2CodeToStr names them); m_index (0..127) indexes the
  * scancode tables.
  */
 
@@ -223,12 +224,42 @@ int IRrm::GetRMCondition()
 	return m_rmCondition;
 }
 
+/*
+ * The pad buttons of the DVD player keys, by RM code (g_rmCode2362). ENTER
+ * confirms and STOP goes back whatever the confirm button: they give the
+ * buttons the pages read once myPad has swapped circle and cross.
+ */
+static unsigned short dvdPadCode(int code)
+{
+	switch (code) {
+	case 11: /* ENTER: confirm */
+		return 0x2000;
+	case 29: /* STOP: back */
+		return 0x4000;
+	case 23: /* PREVIOUS: L1 */
+		return 0x0400;
+	case 24: /* NEXT: R1 */
+		return 0x0800;
+	case 26: /* REV SCAN: L2 */
+		return 0x0100;
+	case 27: /* FWD SCAN: R2 */
+		return 0x0200;
+	case 25: /* PLAY */
+	case 30: /* PAUSE: start */
+		return 0x0008;
+	case 31: /* DISPLAY ON/OFF: select */
+		return 0x0001;
+	}
+	return 0;
+}
+
 unsigned short IRrm::GetPadCode()
 {
-	int code = GetRMCode() - 72;
+	int code = GetRMCode();
 
-	if ((unsigned int)code >= 16)
-		return 0;
+	if ((unsigned int)(code - 72) >= 16)
+		return dvdPadCode(code);
+	code -= 72;
 	/* Circle and cross follow the confirm button like those of the pad. */
 	if (SysOption.getPadEnter()) {
 		if (code == 13)
