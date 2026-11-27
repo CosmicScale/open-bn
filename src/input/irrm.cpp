@@ -12,6 +12,7 @@
 #include "input/scerm2.h"
 #include "app/syscnf.h"
 #include "app/systemoptions.h"
+#include "input/mypad.h"
 #include "irrm.h"
 
 /* Port descriptor passed to sceRm2PortOpen, 64-byte aligned like the DMA
@@ -226,29 +227,29 @@ int IRrm::GetRMCondition()
 
 /*
  * The pad buttons of the DVD player keys, by RM code (g_rmCode2362). ENTER
- * confirms and STOP goes back whatever the confirm button: they give the
- * buttons the pages read once myPad has swapped circle and cross.
+ * and STOP are named for what they do: they confirm and go back whatever the
+ * confirm button.
  */
 static unsigned short dvdPadCode(int code)
 {
 	switch (code) {
-	case 11: /* ENTER: confirm */
-		return 0x2000;
-	case 29: /* STOP: back */
-		return 0x4000;
-	case 23: /* PREVIOUS: L1 */
-		return 0x0400;
-	case 24: /* NEXT: R1 */
-		return 0x0800;
-	case 26: /* REV SCAN: L2 */
-		return 0x0100;
-	case 27: /* FWD SCAN: R2 */
-		return 0x0200;
+	case 11: /* ENTER */
+		return PAD_CONFIRM;
+	case 29: /* STOP */
+		return PAD_BACK;
+	case 23: /* PREVIOUS */
+		return PAD_L1;
+	case 24: /* NEXT */
+		return PAD_R1;
+	case 26: /* REV SCAN */
+		return PAD_L2;
+	case 27: /* FWD SCAN */
+		return PAD_R2;
 	case 25: /* PLAY */
-	case 30: /* PAUSE: start */
-		return 0x0008;
-	case 31: /* DISPLAY ON/OFF: select */
-		return 0x0001;
+	case 30: /* PAUSE */
+		return PAD_START;
+	case 31: /* DISPLAY ON/OFF */
+		return PAD_SELECT;
 	}
 	return 0;
 }
@@ -256,16 +257,13 @@ static unsigned short dvdPadCode(int code)
 unsigned short IRrm::GetPadCode()
 {
 	int code = GetRMCode();
+	unsigned short buttons;
 
 	if ((unsigned int)(code - 72) >= 16)
 		return dvdPadCode(code);
-	code -= 72;
-	/* Circle and cross follow the confirm button like those of the pad. */
-	if (SysOption.getPadEnter()) {
-		if (code == 13)
-			code = 14;
-		else if (code == 14)
-			code = 13;
-	}
-	return g_padCode[code];
+	buttons = g_padCode[code - 72];
+	/* Circle and cross are those of the pad. */
+	if (SysOption.getPadEnter())
+		buttons = padSwapEnter(buttons);
+	return buttons;
 }
