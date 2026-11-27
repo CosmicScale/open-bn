@@ -385,16 +385,23 @@ void myPad::pad_button_read(unsigned short force)
 	unsigned char c;
 
 	if (m_readMode == 1) {
-		if (read(m_fd, &m_bufStat, 32) == 0)
+		int n = read(m_fd, &m_bufStat, 32);
+
+		if (n == 0)
 			return;
 		if (m_bufStat != 0)
 			return;
-		if (SysOption.getPadEnter()) {
-			unsigned char press = m_neutral[PRESS_CIRCLE];
-
+		/* Only a packet just read: after a failed read (-1) the buffer holds the
+		   last one, already swapped. Its pressures (m_neutral starts at +4) only
+		   when the packet has them. */
+		if (n > 0 && SysOption.getPadEnter()) {
 			m_bufBtn = padSwapEnter(m_bufBtn);
-			m_neutral[PRESS_CIRCLE] = m_neutral[PRESS_CROSS];
-			m_neutral[PRESS_CROSS] = press;
+			if (n > 4 + PRESS_CROSS) {
+				unsigned char press = m_neutral[PRESS_CIRCLE];
+
+				m_neutral[PRESS_CIRCLE] = m_neutral[PRESS_CROSS];
+				m_neutral[PRESS_CROSS] = press;
+			}
 		}
 	} else {
 		m_bufStat = 0;

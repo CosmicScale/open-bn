@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include "unity.h"
 #include "app/systemoptions.h"
@@ -125,6 +126,30 @@ static void test_digital_pad_follows_the_setting(void)
 	TEST_ASSERT_EQUAL_HEX16(PAD_BACK, readPad(MODE_DIGITAL, PAD_CIRCLE, 0));
 }
 
+/* A digital packet has no pressures: those of the last packet stay as they are. */
+static void test_digital_packet_keeps_the_pressures(void)
+{
+	SysOption.setPadEnter(1);
+	readPad(MODE_DUALSHOCK2, PAD_CROSS, 0);
+	readPad(MODE_DIGITAL, PAD_CROSS, 0);
+	TEST_ASSERT_EQUAL_HEX8(0xff, s_pad->m_neutral[PRESS_CIRCLE]);
+	TEST_ASSERT_EQUAL_HEX8(0, s_pad->m_neutral[PRESS_CROSS]);
+}
+
+/* After a failed read the pad keeps the last packet, without swapping it
+   again. */
+static void test_failed_read_keeps_the_buttons(void)
+{
+	SysOption.setPadEnter(1);
+	TEST_ASSERT_EQUAL_HEX16(PAD_CONFIRM, readPad(MODE_DUALSHOCK2, PAD_CROSS, 0));
+	close(s_pipe[0]);
+	s_pad->m_fd = -1;
+	s_pad->pad_button_read(0);
+	TEST_ASSERT_EQUAL_HEX16(PAD_CONFIRM, s_pad->m_buttons[0].w);
+	TEST_ASSERT_EQUAL_HEX8(0xff, s_pad->m_neutral[PRESS_CIRCLE]);
+	s_pipe[0] = open("/dev/null", O_RDONLY); /* closed by tearDown */
+}
+
 /* The circle and cross keys of the remote (codes 85 and 86). */
 static void test_remote_circle_and_cross_follow_the_setting(void)
 {
@@ -192,6 +217,8 @@ extern "C" int __wrap_main(int, char **)
 	RUN_TEST(test_pad_circle_confirms);
 	RUN_TEST(test_pad_cross_confirms);
 	RUN_TEST(test_digital_pad_follows_the_setting);
+	RUN_TEST(test_digital_packet_keeps_the_pressures);
+	RUN_TEST(test_failed_read_keeps_the_buttons);
 	RUN_TEST(test_remote_circle_and_cross_follow_the_setting);
 	RUN_TEST(test_dvd_keys);
 	RUN_TEST(test_no_key);
