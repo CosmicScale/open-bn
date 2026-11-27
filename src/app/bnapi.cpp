@@ -145,7 +145,7 @@ void BNAPI::SCRIPT_SET_DESTROY_CALLBACK(__amx *amx, unsigned int id, void (*fn)(
 }
 
 /* Integer system parameters: 300 = CD/DVD media type, 301 = network up,
-   700..719 = the user settings held in SysOption. */
+   700..720 = the user settings held in SysOption. */
 int BNAPI::GetSystemParam(int param)
 {
 	switch (param) {
@@ -193,6 +193,8 @@ int BNAPI::GetSystemParam(int param)
 		return SysOption.m_dateNotation;
 	case 719:
 		return SysOption.m_autoDiag;
+	case 720:
+		return SysOption.m_padEnter;
 	default:
 		return 0;
 	}

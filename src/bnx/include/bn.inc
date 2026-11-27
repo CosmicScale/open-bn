@@ -105,6 +105,7 @@ const SYS_SUMMER_TIME = 716;
 const SYS_TIME_NOTATION = 717;
 const SYS_DATE_NOTATION = 718;
 const SYS_AUTO_DIAG = 719;
+const SYS_ENTER_BUTTON = 720; /* the button that confirms: 0 circle, 1 cross */
 
 /* Disc types, the values of SYS_CDVD_TYPE (the disc types of libcdvd). */
 const CDVD_NO_DISC = 0;
@@ -562,6 +563,7 @@ native scnfGetCmdline(const word1[], const word2[], const word3[], const word4[]
         size4, size5);
 native scnfGetDateNotation();
 native scnfGetDVDProg();
+native scnfGetEnterBtn();
 native scnfGetIniMode();
 native scnfGetKBRepeatS();
 native scnfGetKBRepeatW();
@@ -587,6 +589,7 @@ native scnfSetAutoDiag(enable);
 native scnfSetDateNotation(notation);
 native scnfSetDateTime(date_year, date_month, date_day, time_hour, time_minute, time_second, is_dst);
 native scnfSetDVDProg(enable);
+native scnfSetEnterBtn(cross);
 native scnfSetIniMode(init_mode);
 native scnfSetKBRepeatS(speed);
 native scnfSetKBRepeatW(wait);

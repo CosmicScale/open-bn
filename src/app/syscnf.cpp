@@ -44,6 +44,7 @@ struct SysOptBlock {
 	/* 0x1C */ int atokKeyBind;
 	/* 0x20 */ int skbOnOff;
 	/* 0x24 */ int skbQwerty;
+	/* 0x28 */ int padEnter;  /* 0: circle confirms, 1: cross */
 };
 
 struct SysCnfRaw {
@@ -57,12 +58,12 @@ struct SysCnfRaw {
 	/* 0x1C */ int timeNotation;
 	/* 0x20 */ int dateNotation;
 	/* 0x24 */ struct SysOptBlock opt;
-	/* 0x4C */ int autoDiag;
-	/* 0x50 */ int dvdProgressive;
-	/* 0x54 */ int rmSysMenu;
-	/* 0x58 */ int rmGA;
-	/* 0x5C */ unsigned int rmMenuCmd;
-};  /* size = 0x60 */
+	/* 0x50 */ int autoDiag;
+	/* 0x54 */ int dvdProgressive;
+	/* 0x58 */ int rmSysMenu;
+	/* 0x5C */ int rmGA;
+	/* 0x60 */ unsigned int rmMenuCmd;
+};  /* size = 0x64 */
 
 static int g_dvdProgBit;             /* DVD progressive flag */
 static unsigned char g_scnf[45];      /* the 45 bytes of /dev/ps2sysconf */
@@ -442,18 +443,19 @@ static int cnfCollect(int, void **)
 	return 0;
 }
 
-const char *sysini_keyword1[5] = {
+const char *sysini_keyword1[6] = {
 	"",
 	"[keyboard",
 	"[mouse",
 	"[atok",
 	"[laststatus",
+	"[pad",
 };
 
 /* clang-format off */
-const char *sysini_keyword2[11] = {
+const char *sysini_keyword2[12] = {
 	"", "type", "repeatw", "repeats", "speed", "dblclk", "lr",
-	"mode", "bind", "softkb_onoff", "softkb_qwert",
+	"mode", "bind", "softkb_onoff", "softkb_qwert", "enter",
 };
 /* clang-format on */
 
@@ -529,7 +531,7 @@ nomem:
 		isSection = 0;
 		sectionIdx = 0;
 		keyIdx = 0;
-		for (k = 1; k < 5; k++)
+		for (k = 1; k < 6; k++)
 			if (strcmp(sysini_keyword1[k], key) == 0) {
 				isSection = 1;
 				sectionIdx = k;
@@ -537,7 +539,7 @@ nomem:
 			}
 		isKey = 0;
 		if (isSection == 0) {
-			for (k2 = 1; k2 < 11; k2++)
+			for (k2 = 1; k2 < 12; k2++)
 				if (strcmp(sysini_keyword2[k2], key) == 0) {
 					isKey = 1;
 					keyIdx = k2;
@@ -590,6 +592,10 @@ nomem:
 				case 10:
 					if (sect == 4)
 						g_raw.opt.skbQwerty = n;
+					break;
+				case 11:
+					if (sect == 5 && (unsigned int)n < 2)
+						g_raw.opt.padEnter = n;
 					break;
 				}
 			}
@@ -645,7 +651,7 @@ static inline IniEntry iniValue(const char *fmt, int i, int *ptr)
 }
 
 /* clang-format off */
-IniEntry sysini_record_table[21] = {
+IniEntry sysini_record_table[24] = {
 	IniEntry(),
 	IniEntry(),
 	iniSection("%s]\n", 1),
@@ -667,6 +673,9 @@ IniEntry sysini_record_table[21] = {
 	iniValue("\t%s = %u;\n", 9, &g_raw.opt.skbOnOff),
 	iniValue("\t%s = %u;\n", 10, &g_raw.opt.skbQwerty),
 	IniEntry(),
+	iniSection("%s]\n", 5),
+	iniValue("\t%s = %u;\t# 0:circle 1:cross\n", 11, &g_raw.opt.padEnter),
+	IniEntry(),
 	IniEntry(),
 };
 /* clang-format on */
@@ -682,7 +691,7 @@ int systemini_write(int, void **)
 		fprintf(stderr, "FILE OPEN ERROR[%s]\n", "pfs:__sysconf/conf/system.ini");
 		return -1;
 	}
-	for (i = 0; i < 21; i++) {
+	for (i = 0; i < sizeof(sysini_record_table) / sizeof(sysini_record_table[0]); i++) {
 		const IniEntry *e = &sysini_record_table[i];
 
 		switch (e->type) {
@@ -1047,6 +1056,10 @@ static cell AMX_NATIVE_CALL n_scnfGetSKBQwert(AMX *, cell *)
 {
 	return g_raw.opt.skbQwerty;
 }
+static cell AMX_NATIVE_CALL n_scnfGetEnterBtn(AMX *, cell *)
+{
+	return g_raw.opt.padEnter;
+}
 static cell AMX_NATIVE_CALL n_scnfGetAutoDiag(AMX *, cell *)
 {
 	return g_raw.autoDiag;
@@ -1291,6 +1304,17 @@ static cell AMX_NATIVE_CALL n_scnfSetMSLr(AMX *, cell *params)
 	if ((unsigned int)v >= 2)
 		return -1;
 	g_raw.opt.msChangeLR = v;
+	return 0;
+}
+
+/* scnfSetEnterBtn(cross): the button that confirms, 0 circle or 1 cross. */
+static cell AMX_NATIVE_CALL n_scnfSetEnterBtn(AMX *, cell *params)
+{
+	int v = params[1];
+
+	if ((unsigned int)v >= 2)
+		return -1;
+	g_raw.opt.padEnter = v;
 	return 0;
 }
 
@@ -2055,6 +2079,7 @@ AMX_NATIVE_INFO smallext_syscnf[] = {
 	{ "scnfGetSKBOnoff", n_scnfGetSKBOnoff },
 	{ "scnfGetSKBQwert", n_scnfGetSKBQwert },
 	{ "scnfGetAutoDiag", n_scnfGetAutoDiag },
+	{ "scnfGetEnterBtn", n_scnfGetEnterBtn },
 	{ "scnfSetSpdif", n_scnfSetSpdif },
 	{ "scnfSetAspect", n_scnfSetAspect },
 	{ "scnfSetVideo", n_scnfSetVideo },
@@ -2078,6 +2103,7 @@ AMX_NATIVE_INFO smallext_syscnf[] = {
 	{ "scnfSetATOKBind", n_scnfSetATOKBind },
 	{ "scnfSetSKBOnoff", n_scnfSetSKBOnoff },
 	{ "scnfSetSKBQwert", n_scnfSetSKBQwert },
+	{ "scnfSetEnterBtn", n_scnfSetEnterBtn },
 	{ "scnfSetAutoDiag", n_scnfSetAutoDiag },
 	{ "sverRead", n_sverRead },
 	{ "sverGetModelName", n_sverGetModelName },
@@ -2129,6 +2155,7 @@ void syscnf_setSysOpt(bool flag)
 		SysOption.m_atokKeyBind = g_raw.opt.atokKeyBind;
 		SysOption.m_softkbOnOff = g_raw.opt.skbOnOff;
 		SysOption.m_softkbQwerty = g_raw.opt.skbQwerty;
+		SysOption.m_padEnter = g_raw.opt.padEnter;
 	} else {
 		SysOption.setKeyboardType(g_raw.opt.kbType);
 		SysOption.setKeyboardRepeatWait(g_raw.opt.kbWait);
@@ -2140,6 +2167,7 @@ void syscnf_setSysOpt(bool flag)
 		SysOption.setAtokKeyBind(g_raw.opt.atokKeyBind);
 		SysOption.setSoftkbOnOff(g_raw.opt.skbOnOff);
 		SysOption.setSoftkbQwerty(g_raw.opt.skbQwerty);
+		SysOption.setPadEnter(g_raw.opt.padEnter);
 	}
 	SysOption.setSpdif(g_raw.spdif);
 	SysOption.setAspect(g_raw.aspect);

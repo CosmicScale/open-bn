@@ -36,6 +36,7 @@ SystemOptions::SystemOptions()
 	m_timeNotation = 0;
 	m_dateNotation = 0;
 	m_autoDiag = 0;
+	m_padEnter = 0;
 }
 
 void SystemOptions::setXGAMode()
@@ -153,6 +154,11 @@ void SystemOptions::setSoftkbQwerty(int qwerty)
 {
 	if (qwerty != m_softkbQwerty)
 		m_softkbQwerty = qwerty;
+}
+
+void SystemOptions::setPadEnter(int enter)
+{
+	m_padEnter = enter;
 }
 
 SystemOptions SysOption;

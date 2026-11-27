@@ -13,6 +13,7 @@
 #include <linux/ps2/pad.h>   /* PS2PAD_IOCSETACTALIGN */
 
 #include "mypad.h"
+#include "app/systemoptions.h"
 
 int myPad::aOpenCount[2][8];
 
@@ -34,6 +35,21 @@ static int s_actAlignStat;
 static myPadActReq s_initActReq;
 static int s_setActStat;
 static myPadActReq s_actReq;
+
+/* With cross as the confirm button, swaps circle and cross in a packet read
+ * from the pad: the bits (active low) and the pressures (m_neutral[9] circle,
+ * m_neutral[10] cross), so that the rest of bn always sees circle as the
+ * button that confirms. Works on any pad, digital ones included. */
+static void padSwapEnter(unsigned short *btn, unsigned char *press)
+{
+	unsigned short b = *btn;
+	unsigned char p;
+
+	*btn = (b & ~0x6000) | ((b & 0x2000) << 1) | ((b & 0x4000) >> 1);
+	p = press[9];
+	press[9] = press[10];
+	press[10] = p;
+}
 
 /* Clears the 2x8 open refcount table. */
 void myPad::Init()
@@ -341,7 +357,9 @@ float myPad::CalcStickSlantAngle(unsigned char x, unsigned char y)
 
 /*
  * Reads a pad packet (32 bytes at this+24), merges the buttons read with the
- * caller's `force` mask, computes the press/release edges, runs the
+ * caller's `force` mask (the remote, whose circle and cross IRrm::GetPadCode
+ * already swaps, and the keyboard, whose keys keep their meaning), computes
+ * the press/release edges, runs the
  * auto-repeat state machine and integrates the two analogue sticks into a
  * floating-point position.
  * Packet (mode 0x79): +0 status (0 = valid), +1 mode, +2..3 buttons (active
@@ -368,6 +386,8 @@ void myPad::pad_button_read(unsigned short force)
 			return;
 		if (m_bufStat != 0)
 			return;
+		if (SysOption.getPadEnter())
+			padSwapEnter(&m_bufBtn, m_neutral);
 	} else {
 		m_bufStat = 0;
 		m_bufBtn = 0xffff;

@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include "input/scerm2.h"
 #include "app/syscnf.h"
+#include "app/systemoptions.h"
 #include "irrm.h"
 
 /* Port descriptor passed to sceRm2PortOpen, 64-byte aligned like the DMA
@@ -226,7 +227,14 @@ unsigned short IRrm::GetPadCode()
 {
 	int code = GetRMCode() - 72;
 
-	if ((unsigned int)code < 16)
-		return g_padCode[code];
-	return 0;
+	if ((unsigned int)code >= 16)
+		return 0;
+	/* Circle and cross follow the confirm button like those of the pad. */
+	if (SysOption.getPadEnter()) {
+		if (code == 13)
+			code = 14;
+		else if (code == 14)
+			code = 13;
+	}
+	return g_padCode[code];
 }

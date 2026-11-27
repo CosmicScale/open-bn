@@ -1,6 +1,6 @@
 /*
  * SystemOptions: the system settings of the Broadband Navigator (keyboard,
- * mouse, ATOK, software keyboard, screen mode, time zone).
+ * mouse, ATOK, software keyboard, screen mode, time zone, pad).
  */
 
 #ifndef SYSTEMOPTIONS_H
@@ -31,6 +31,8 @@ public:
 	void setSoftkbOnOff(int onOff);
 	void setSoftkbQwerty(int qwerty);
 
+	void setPadEnter(int enter);
+
 	int getResWidth() { return m_resWidth; }
 	int getResHeight() { return m_resHeight; }
 	int getKeyboardType() { return m_keyboardType; }
@@ -42,6 +44,7 @@ public:
 	int getAtokKeyBind() { return m_atokKeyBind; }
 	int getSoftkbOnOff() { return m_softkbOnOff; }
 	int getSoftkbQwerty() { return m_softkbQwerty; }
+	int getPadEnter() { return m_padEnter; }
 	int getTimeZone() { return m_timeZone; }
 	int getSummerTime() { return m_summerTime; }
 
@@ -88,10 +91,11 @@ public:
 	/* 0x68 */ int m_timeNotation;
 	/* 0x6C */ int m_dateNotation;
 	/* 0x70 */ int m_autoDiag;
+	/* 0x74 */ int m_padEnter;  /* the button that confirms: 0 circle, 1 cross */
 
 public:
-	virtual ~SystemOptions() {}   // vptr at 0x74
-};  /* size = 0x78 */
+	virtual ~SystemOptions() {}   // vptr at 0x78
+};  /* size = 0x7C */
 
 extern SystemOptions SysOption;
 
