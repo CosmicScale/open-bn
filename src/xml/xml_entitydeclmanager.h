@@ -1,6 +1,7 @@
 /*
  * EntityDeclManager: hash table (256 buckets) of the entity declarations, with the five
- * predefined entities of XML (lt, gt, amp, apos, quot).
+ * predefined entities of XML (lt, gt, amp, apos, quot) and bn's entities of the confirm and back
+ * buttons (btn_enter, btn_back, btn_enter_name).
  */
 
 #ifndef GUARD_XML_ENTITYDECLMANAGER_H

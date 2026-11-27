@@ -57,6 +57,23 @@ programs from the PC on a random TCP port: a firewall on the PC must let it thro
   the disk in memory: members stored in plaintext (headers, bodies, skips, zero padding at the end,
   truncated, personalized or overlong members), and the streams handed to the DNAS2 reader instead:
   encrypted, truncated, or not starting with a valid member.
+- **`input_test`**: the confirm button on the inputs (`src/input/mypad.cpp`, `src/input/irrm.cpp`).
+  The pad reads its packets from a pipe, as the driver returns them for a DualShock 2 and for a
+  digital pad; the remote is given the keys it would decode. Circle and cross of the pad and of the
+  remote follow the setting, the DVD player keys (ENTER, STOP, PREVIOUS, ...) give the same buttons
+  with either setting, and the buttons of the remote reach the pages through the pad without being
+  swapped again.
+- **`sysconf_test`**: the confirm button in the system configuration (`src/app/syscnf.cpp`):
+  `[pad] enter` of `system.ini` on a `__sysconf` partition in memory (`fakepfs`, writable there),
+  read by `sysconf_read` together with the console's own configuration device, which is only read.
+  The value reaches `SysOption` and `GetSystemParam(720)`; values other than 0 and 1, and `enter`
+  outside `[pad]`, are ignored; the natives of the settings page refuse them; `systemini_write`
+  writes the whole file, adding `[pad]` to a file without it.
+- **`xml_entity_test`**: the entities of the buttons in the pages (`src/xml/xml_entitydeclmanager.cpp`),
+  parsed as the loader of the pages parses them: `&btn_enter;` and `&btn_back;` give the glyphs of the
+  confirm and back buttons and `&btn_enter_name;` `circle` or `cross`, in attribute values and in the
+  text of an element (one text node, as the scripts read it), with the setting of the moment the page
+  is parsed; the predefined entities of XML are unchanged.
 
 pfsd serves several clients at once, each with its own mount points, so the tests run next to `bn`.
 But pfsd refuses to open a partition raw while another client has it mounted, and `bn` keeps

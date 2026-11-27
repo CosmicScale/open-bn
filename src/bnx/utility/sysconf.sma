@@ -379,6 +379,7 @@ const GROUP_TEXT_INPUT = 5;
 const GROUP_KEYBOARD = 6;
 const GROUP_MOUSE = 7;
 const GROUP_REMOTE = 8;
+const GROUP_CONTROLLER = 9;
 const CONSOLE_MODEL = 0;
 const CONSOLE_MAC_ADDRESS = 1;
 const CONSOLE_DVD_PLAYER = 2;
@@ -403,12 +404,36 @@ const MOUSE_HAND = 0;
 const MOUSE_SPEED = 1;
 const MOUSE_DOUBLE_CLICK = 2;
 const REMOTE_GAME_PLAY = 0;
+const CONTROLLER_ENTER = 0;
 
 /* The image of each group, shown beside the menu of the groups. */
 new g_group_images[10][8] = {
     "sysconf_img_0", "sysconf_img_1", "sysconf_img_2", "sysconf_img_3", "sysconf_img_4",
-    "sysconf_img_5", "sysconf_img_6", "sysconf_img_7", "sysconf_img_8", ""
+    "sysconf_img_5", "sysconf_img_6", "sysconf_img_7", "sysconf_img_8", "sysconf_img_9"
 };
+
+/* Whether the menu of the groups has the remote control: without it, the groups after it move up one row. */
+new g_remote_shown = 1;
+
+/* The group of a row of the menu of the groups. */
+row_group(row)
+{
+    if (!g_remote_shown && row >= GROUP_REMOTE)
+    {
+        return row + 1;
+    }
+    return row;
+}
+
+/* The row of a group in the menu of the groups. */
+group_row(group)
+{
+    if (!g_remote_shown && group > GROUP_REMOTE)
+    {
+        return group - 1;
+    }
+    return group;
+}
 
 /*
  * Gets the text of a value of an item, of its current value if value is negative; the first four items of the
@@ -654,6 +679,16 @@ get_sysconf_item(group, sub, item)
                 }
             }
         }
+        case GROUP_CONTROLLER:
+        {
+            switch (item)
+            {
+                case CONTROLLER_ENTER:
+                {
+                    return scnfGetEnterBtn();
+                }
+            }
+        }
     }
     return -1;
 }
@@ -823,6 +858,16 @@ set_sysconf_item(group, sub, item, value)
                 }
             }
         }
+        case GROUP_CONTROLLER:
+        {
+            switch (item)
+            {
+                case CONTROLLER_ENTER:
+                {
+                    return scnfSetEnterBtn(value);
+                }
+            }
+        }
     }
     return -1;
 }
@@ -922,19 +967,19 @@ hide_versions()
 main()
 {
     new scroll_pos = -1;
-    new group_count = 9; /* 8 without the remote control */
+    new group_count;
     if (0 == scnfGetRmSupport() || 0 == scnfGetRmSysMenu())
     {
-        new node = domFindTag(domRoot(), "menu", "sysconf_menu", 0);
-        if (node)
-        {
-            node = domLastChild(node, "");
-        }
+        new node = find_menu_item("sysconf_menu", GROUP_REMOTE);
         if (node)
         {
             domRemoveTag(node);
         }
-        group_count = 8;
+        g_remote_shown = 0;
+    }
+    for (new node = find_menu_item("sysconf_menu", 0); node; node = domNext(node, "item"))
+    {
+        group_count++;
     }
     start_top_page(0);
     if (scnfRead() < 0)
@@ -1019,7 +1064,7 @@ main()
             if (shown_group != cursor)
             {
                 new url[256];
-                get_tag_attr("IMG", g_group_images[cursor], "src", url, 256);
+                get_tag_attr("IMG", g_group_images[row_group(cursor)], "src", url, 256);
                 SendMessageStr(window, TAG("IMAG"), url);
                 shown_group = cursor;
             }
@@ -1051,7 +1096,7 @@ main()
                         SendMessage(menu, TAG("FADE"), 0, float(300), 0, 0);
                         SendMessageStr(title, TAG("UTF8"), "");
                         wait_ms(300);
-                        run_group(a, scroll_bar, focus, window);
+                        run_group(row_group(a), scroll_bar, focus, window);
                         SendMessage(menu, TAG("FADE"), 1.0, float(400), 0, 0);
                         {
                             new text[64];
@@ -1129,7 +1174,7 @@ run_group(group, scroll_bar, focus, window)
     }
     {
         new text[64];
-        domGetData(find_menu_item("sysconf_menu", group), "value", text, 64);
+        domGetData(find_menu_item("sysconf_menu", group_row(group)), "value", text, 64);
         SendMessageStr(title, TAG("UTF8"), text);
     }
     SendMessage(menu, TAG("FADE"), 1.0, float(400), 0, 0);
@@ -1271,7 +1316,7 @@ run_group(group, scroll_bar, focus, window)
                         }
                         {
                             new text[64];
-                            domGetData(find_menu_item("sysconf_menu", group), "value", text, 64);
+                            domGetData(find_menu_item("sysconf_menu", group_row(group)), "value", text, 64);
                             SendMessageStr(title, TAG("UTF8"), text);
                         }
                         if (count > GROUP_BAR_ROWS)
@@ -1418,7 +1463,7 @@ run_group(group, scroll_bar, focus, window)
                         }
                         {
                             new text[64];
-                            domGetData(find_menu_item("sysconf_menu", group), "value", text, 64);
+                            domGetData(find_menu_item("sysconf_menu", group_row(group)), "value", text, 64);
                             SendMessageStr(title, TAG("UTF8"), text);
                         }
                         if (count > GROUP_BAR_ROWS)
@@ -1488,7 +1533,7 @@ run_group(group, scroll_bar, focus, window)
                                         }
                                         {
                                             new text[64];
-                                            domGetData(find_menu_item("sysconf_menu", group), "value", text, 64);
+                                            domGetData(find_menu_item("sysconf_menu", group_row(group)), "value", text, 64);
                                             SendMessageStr(title, TAG("UTF8"), text);
                                         }
                                         if (count > GROUP_BAR_ROWS)
@@ -1566,7 +1611,7 @@ run_subgroup(group, sub, scroll_bar, focus, window)
     new menu = create_subgroup_menu(group, sub, title, focus, count);
     {
         new text[64];
-        domGetData(find_menu_item("sysconf_menu", group), "value", text, 64);
+        domGetData(find_menu_item("sysconf_menu", group_row(group)), "value", text, 64);
         SendMessageStr(title, TAG("UTF8"), text);
     }
     SendMessage(menu, TAG("FADE"), 1.0, float(400), 0, 0);
@@ -1663,7 +1708,7 @@ run_subgroup(group, sub, scroll_bar, focus, window)
                         SendMessage(menu, TAG("FADE"), 1.0, float(400), 0, 0);
                         {
                             new text[64];
-                            domGetData(find_menu_item("sysconf_menu", group), "value", text, 64);
+                            domGetData(find_menu_item("sysconf_menu", group_row(group)), "value", text, 64);
                             SendMessageStr(title, TAG("UTF8"), text);
                         }
                         if (count > GROUP_BAR_ROWS)

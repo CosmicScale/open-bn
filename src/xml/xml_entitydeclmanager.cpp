@@ -1,6 +1,7 @@
 /*
  * EntityDeclManager: the entity declarations of a document in a 256-bucket hash table,
- * preloaded with the five predefined entities; resolution of names and character references.
+ * preloaded with the five predefined entities and those of the buttons; resolution of names and
+ * character references.
  */
 
 #include "xml_locator.h"
@@ -12,6 +13,32 @@
 #include "xml_entitydeclmanager.h"
 #include "xml_entitydeclaration.h"
 #include "xml_string.h"
+#include "app/systemoptions.h"
+
+/* U+25CB WHITE CIRCLE and U+00D7 MULTIPLICATION SIGN, in UTF-8: the glyphs the pages write for the buttons. */
+#define GLYPH_CIRCLE "\xe2\x97\x8b"
+#define GLYPH_CROSS "\xc3\x97"
+
+/*
+ * Declares the entities of the confirm and back buttons, which follow the setting: &btn_enter; and &btn_back; are
+ * their glyphs ("press the &btn_enter; button"), &btn_enter_name; names the button that confirms (circle or cross)
+ * for the paths of the images drawn for each.
+ */
+static void addButtonEntities(EntityDeclManager *m)
+{
+	const int cross = SysOption.getPadEnter();
+	XMLString enter("btn_enter", false);
+	XMLString back("btn_back", false);
+	XMLString enterName("btn_enter_name", false);
+	XMLString circleGlyph(GLYPH_CIRCLE, false);
+	XMLString crossGlyph(GLYPH_CROSS, false);
+	XMLString circleName("circle", false);
+	XMLString crossName("cross", false);
+
+	m->AddInternalDeclaration(&enter, cross ? &crossGlyph : &circleGlyph, false);
+	m->AddInternalDeclaration(&back, cross ? &circleGlyph : &crossGlyph, false);
+	m->AddInternalDeclaration(&enterName, cross ? &crossName : &circleName, false);
+}
 
 EntityDeclManager::EntityDeclManager()
 {
@@ -63,6 +90,8 @@ EntityDeclManager::EntityDeclManager()
 	fBuiltinRefs[5] = new XMLString("&#38;#62;", false);
 	fBuiltinRefs[6] = new XMLString("&#38;#39;", false);
 	fBuiltinRefs[7] = new XMLString("&#38;#34;", false);
+
+	addButtonEntities(this);
 }
 
 EntityDeclManager::~EntityDeclManager()

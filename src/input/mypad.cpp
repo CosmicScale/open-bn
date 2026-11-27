@@ -13,6 +13,7 @@
 #include <linux/ps2/pad.h>   /* PS2PAD_IOCSETACTALIGN */
 
 #include "mypad.h"
+#include "app/systemoptions.h"
 
 int myPad::aOpenCount[2][8];
 
@@ -34,6 +35,27 @@ static int s_actAlignStat;
 static myPadActReq s_initActReq;
 static int s_setActStat;
 static myPadActReq s_actReq;
+
+/* The pressures of circle and cross in m_neutral. */
+static const int PRESS_CIRCLE = 9;
+static const int PRESS_CROSS = 10;
+
+/*
+ * Swaps circle and cross in a word of buttons, active low or high. With cross
+ * as the confirm button, the circle and cross of the pad and of the remote go
+ * through it, so that the button that confirms gives PAD_CONFIRM; the keys
+ * named for what they do (ENTER, STOP) do not.
+ */
+unsigned short padSwapEnter(unsigned short buttons)
+{
+	unsigned short swapped = buttons & ~(PAD_CIRCLE | PAD_CROSS);
+
+	if (buttons & PAD_CIRCLE)
+		swapped |= PAD_CROSS;
+	if (buttons & PAD_CROSS)
+		swapped |= PAD_CIRCLE;
+	return swapped;
+}
 
 /* Clears the 2x8 open refcount table. */
 void myPad::Init()
@@ -340,16 +362,15 @@ float myPad::CalcStickSlantAngle(unsigned char x, unsigned char y)
 }
 
 /*
- * Reads a pad packet (32 bytes at this+24), merges the buttons read with the
- * caller's `force` mask, computes the press/release edges, runs the
- * auto-repeat state machine and integrates the two analogue sticks into a
- * floating-point position.
+ * Reads a pad packet (32 bytes at this+24), swaps its circle and cross when
+ * cross confirms, merges the buttons read with the caller's `force` mask (the
+ * remote and the keyboard, already given as the buttons the pages read),
+ * computes the press/release edges, runs the auto-repeat state machine and
+ * integrates the two analogue sticks into a floating-point position.
  * Packet (mode 0x79): +0 status (0 = valid), +1 mode, +2..3 buttons (active
- * low), +4 RX +5 RY +6 LX +7 LY, +8..19 pressures of right, left, up, down,
- * triangle, circle, cross, square, L1, R1, L2, R2.
- * Button bits: 0x10 up, 0x20 right, 0x40 down, 0x80 left, 0x100 L2,
- * 0x200 R2, 0x400 L1, 0x800 R1, 0x1000 triangle, 0x2000 circle,
- * 0x4000 cross, 0x8000 square. A button forced by `force` gets pressure 0xff.
+ * low, the PAD_* bits), +4 RX +5 RY +6 LX +7 LY, +8..19 pressures of right,
+ * left, up, down, triangle, circle, cross, square, L1, R1, L2, R2. A button
+ * forced by `force` gets pressure 0xff.
  * Stick integration: pos += sign(d) * d * d * 0.002f, clamped to [0, 640] on
  * X and [0, 896] on Y; the integer copy is (int)(pos + 0.5f).
  */
@@ -364,10 +385,24 @@ void myPad::pad_button_read(unsigned short force)
 	unsigned char c;
 
 	if (m_readMode == 1) {
-		if (read(m_fd, &m_bufStat, 32) == 0)
+		int n = read(m_fd, &m_bufStat, 32);
+
+		if (n == 0)
 			return;
 		if (m_bufStat != 0)
 			return;
+		/* Only a packet just read: after a failed read (-1) the buffer holds the
+		   last one, already swapped. Its pressures (m_neutral starts at +4) only
+		   when the packet has them. */
+		if (n > 0 && SysOption.getPadEnter()) {
+			m_bufBtn = padSwapEnter(m_bufBtn);
+			if (n > 4 + PRESS_CROSS) {
+				unsigned char press = m_neutral[PRESS_CIRCLE];
+
+				m_neutral[PRESS_CIRCLE] = m_neutral[PRESS_CROSS];
+				m_neutral[PRESS_CROSS] = press;
+			}
+		}
 	} else {
 		m_bufStat = 0;
 		m_bufBtn = 0xffff;

@@ -54,6 +54,7 @@ const GROUP_TEXT_INPUT = 5; /* ATOK */
 const GROUP_KEYBOARD = 6;
 const GROUP_MOUSE = 7;
 const GROUP_REMOTE = 8;
+const GROUP_CONTROLLER = 9;
 /* The items of each group (the menus sysconf_menu_<group>, sysconf_menu_<group>_<sub> for a subgroup). */
 const CONSOLE_MODEL = 0;
 const CONSOLE_MAC_ADDRESS = 1;
@@ -79,6 +80,7 @@ const MOUSE_HAND = 0;
 const MOUSE_SPEED = 1;
 const MOUSE_DOUBLE_CLICK = 2;
 const REMOTE_GAME_PLAY = 0; /* also the item of the remote control subgroup */
+const CONTROLLER_ENTER = 0; /* the button that confirms: circle or cross */
 /* The subgroups of the console group (sub): the item that opens each, or none. */
 const SUBGROUP_NONE = -1;
 const SUBGROUP_REMOTE = 0;     /* the remote control: CONSOLE_MODEL */
@@ -265,6 +267,16 @@ stock get_sysconf_item(group, sub, item)
                 }
             }
         }
+        case GROUP_CONTROLLER:
+        {
+            switch (item)
+            {
+                case CONTROLLER_ENTER:
+                {
+                    return scnfGetEnterBtn();
+                }
+            }
+        }
     }
     return -1;
 }
@@ -431,6 +443,16 @@ stock set_sysconf_item(group, sub, item, value)
                 case REMOTE_GAME_PLAY:
                 {
                     return scnfSetRmGA(1 - value);
+                }
+            }
+        }
+        case GROUP_CONTROLLER:
+        {
+            switch (item)
+            {
+                case CONTROLLER_ENTER:
+                {
+                    return scnfSetEnterBtn(value);
                 }
             }
         }

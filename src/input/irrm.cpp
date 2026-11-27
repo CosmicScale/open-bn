@@ -1,6 +1,7 @@
 /*
  * IRrm: the IR remote control of the BB Navigator (not polymorphic).
- * m_deviceId is the remote model (2362 or 7002); m_index (0..127) indexes the
+ * m_deviceId is the key set (2362 the DVD player keys, 7002 the controller
+ * keys, as sceRm2CodeToStr names them); m_index (0..127) indexes the
  * scancode tables.
  */
 
@@ -10,6 +11,8 @@
 #include <sys/ioctl.h>
 #include "input/scerm2.h"
 #include "app/syscnf.h"
+#include "app/systemoptions.h"
+#include "input/mypad.h"
 #include "irrm.h"
 
 /* Port descriptor passed to sceRm2PortOpen, 64-byte aligned like the DMA
@@ -222,11 +225,45 @@ int IRrm::GetRMCondition()
 	return m_rmCondition;
 }
 
+/*
+ * The pad buttons of the DVD player keys, by RM code (g_rmCode2362). ENTER
+ * and STOP are named for what they do: they confirm and go back whatever the
+ * confirm button.
+ */
+static unsigned short dvdPadCode(int code)
+{
+	switch (code) {
+	case 11: /* ENTER */
+		return PAD_CONFIRM;
+	case 29: /* STOP */
+		return PAD_BACK;
+	case 23: /* PREVIOUS */
+		return PAD_L1;
+	case 24: /* NEXT */
+		return PAD_R1;
+	case 26: /* REV SCAN */
+		return PAD_L2;
+	case 27: /* FWD SCAN */
+		return PAD_R2;
+	case 25: /* PLAY */
+	case 30: /* PAUSE */
+		return PAD_START;
+	case 31: /* DISPLAY ON/OFF */
+		return PAD_SELECT;
+	}
+	return 0;
+}
+
 unsigned short IRrm::GetPadCode()
 {
-	int code = GetRMCode() - 72;
+	int code = GetRMCode();
+	unsigned short buttons;
 
-	if ((unsigned int)code < 16)
-		return g_padCode[code];
-	return 0;
+	if ((unsigned int)(code - 72) >= 16)
+		return dvdPadCode(code);
+	buttons = g_padCode[code - 72];
+	/* Circle and cross are those of the pad. */
+	if (SysOption.getPadEnter())
+		buttons = padSwapEnter(buttons);
+	return buttons;
 }

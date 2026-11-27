@@ -30,9 +30,13 @@ TESTS = {
     'gettext_test': ['tests/gettext_test.cpp'],
     'amx_loader_test': ['tests/amx_loader_test.cpp'],
     'dnas_ar_test': ['tests/dnas_ar_test.cpp', 'tests/support/fakepfs.cpp'],
+    'input_test': ['tests/input_test.cpp'],
+    'sysconf_test': ['tests/sysconf_test.cpp', 'tests/support/fakepfs.cpp'],
+    'xml_entity_test': ['tests/xml_entity_test.cpp'],
 }
 COMMON = ['tests/support/testutil.cpp', f'{UNITY}/unity.c']
-CFLAGS = f'-Itests -I{UNITY}'
+# -DSN_TARGET_PS2: the integer types of ref/small-fmt6/amx.h, as bn's units that include it
+CFLAGS = f'-Itests -I{UNITY} -DSN_TARGET_PS2'
 
 
 def main():

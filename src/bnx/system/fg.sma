@@ -88,6 +88,7 @@ new g_label_params[4] = {SYS_STR_PADHELP_RL, SYS_STR_PADHELP_RD, SYS_STR_PADHELP
 new g_default_params[4] = {SYS_STR_PADHELP_DEF_RL, SYS_STR_PADHELP_DEF_RD, SYS_STR_PADHELP_DEF_RR,
         SYS_STR_PADHELP_DEF_RU};
 new g_button_shown[6];
+new g_enter_button; /* the SYS_ENTER_BUTTON that g_label_params and g_button_bits follow */
 new g_mail_shown;
 new g_lock_shown;
 new Float:g_button_x[8][3] = {
@@ -140,6 +141,26 @@ create_pad_button(index)
         SetTexture(g_button_icons[index], imgGetResource(g_button_textures[index]), 0, -1);
         SetOptionI(g_button_icons[index], TAG("ALPH"), BLEND_ADD);
         Hide(g_button_icons[index]);
+    }
+}
+
+/*
+ * Follows SYS_ENTER_BUTTON: with cross as the confirm button, the cross and circle buttons keep their icons and
+ * swap their labels and the SYS_PADHELP bits that show them, so that each icon names what its button does.
+ */
+follow_enter_button(&changed)
+{
+    new enter = GetSystemParam(SYS_ENTER_BUTTON);
+    if (enter != g_enter_button)
+    {
+        g_enter_button = enter;
+        new t = g_label_params[BUTTON_CROSS];
+        g_label_params[BUTTON_CROSS] = g_label_params[BUTTON_CIRCLE];
+        g_label_params[BUTTON_CIRCLE] = t;
+        t = g_button_bits[BUTTON_CROSS];
+        g_button_bits[BUTTON_CROSS] = g_button_bits[BUTTON_CIRCLE];
+        g_button_bits[BUTTON_CIRCLE] = t;
+        changed = 1;
     }
 }
 
@@ -253,6 +274,7 @@ main()
             {
             }
         }
+        follow_enter_button(changed);
         update_pad_help(changed);
         sleep;
         {

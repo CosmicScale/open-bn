@@ -155,4 +155,6 @@ void SystemOptions::setSoftkbQwerty(int qwerty)
 		m_softkbQwerty = qwerty;
 }
 
+int SystemOptions::s_padEnter = 0;
+
 SystemOptions SysOption;
