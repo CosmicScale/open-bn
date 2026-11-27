@@ -63,9 +63,11 @@ TOOL = f'{ROOT}/docker/toolchain/sony'                  # Sony gcc 2.95.2 (make 
 INC = f'{ROOT}/docker/toolchain/include'                # its headers (make headers)
 BIN = f'{ROOT}/docker/toolchain/sonybinutils'           # Sony binutils 2.9EE (make sony-binutils)
 AS, LD, STRIP = (f'{BIN}/mipsEEel-linux-{t}' for t in ('as', 'ld', 'strip'))
-# the pins of docker/Dockerfile.sonybinutils: an ld built without
-# docker/patches/ld-compact-rel-relvaddr.patch links, but writes different bytes at every link
-TOOL_SHA1 = {AS: 'e07c3a4602f51e75a321f83963ce302d624c0b43', LD: 'ccaa3d26986fab487abaf619cfde7c33c7fa6bda'}
+# the pins of docker/Dockerfile.sonybinutils: an as built without
+# docker/patches/gas-overlapping-memcpy.patch can turn the lui of a NO_PIC macro into a
+# load/store, an ld built without docker/patches/ld-compact-rel-relvaddr.patch links, but
+# writes different bytes at every link
+TOOL_SHA1 = {AS: 'a7cd60b7f240ac2c387dba861eac6d61ccaab175', LD: 'ccaa3d26986fab487abaf619cfde7c33c7fa6bda'}
 KIT = f'{ROOT}/docker/kit/rootfs'                       # the PS2 Linux Kit (make kit)
 SC = f'{ROOT}/docker/toolchain/small/sc'                # Small 2.1.0 (make small)
 # the options of every script (docs/scripts.md); -i and the paths are added per script

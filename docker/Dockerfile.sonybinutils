@@ -16,6 +16,11 @@ RUN tar xzf binutils-2.9EE.tar.gz && ls
 WORKDIR /work/binutils-2.9EE
 RUN patch -p1 < ../binutils-ps2linux-1.0.0.patch
 
+# Our patch to gas (see its header): memmove where the source and destination of a
+# copy can overlap; with memcpy the result depends on the libc gas runs on.
+COPY patches/gas-overlapping-memcpy.patch /work/
+RUN patch -p1 < /work/gas-overlapping-memcpy.patch
+
 # fixes for modern hosts
 RUN sed -i -- 's/include <varargs.h>/include <stdarg.h>/g' $(grep -rl 'include <varargs.h>' --include='*.c' . || true) 2>/dev/null || true
 RUN find . -name configure -o -name config.in -o -name 'cstamp-h*' | xargs touch
@@ -35,14 +40,14 @@ RUN mkdir /build && cp /work/build/gas/as-new /build/mipsEEel-linux-as
 RUN /build/mipsEEel-linux-as --version | head -2
 # this as is the pinned one: ubuntu:focal and its apt packages are not pinned, an
 # update of gcc-9/flex in the archive would change the binary silently
-RUN echo "e07c3a4602f51e75a321f83963ce302d624c0b43  /build/mipsEEel-linux-as" | sha1sum -c
+RUN echo "a7cd60b7f240ac2c387dba861eac6d61ccaab175  /build/mipsEEel-linux-as" | sha1sum -c
 
 # period flex for ld: ld/ldlex.l uses yy_current_buffer, an internal of flex 2.5.4 gone
 # since flex 2.5.31, and the tarball does not ship the pregenerated scanners (ldlex.c,
 # arlex.c, ...). Ubuntu focal's flex-old = flex 2.5.4a (package 2.5.4a-10ubuntu2).
 # It is installed after gas, not in place of flex at the start: gas links itbl-lex.l
-# (tc-mips) and with flex 2.5.4a as-new would change (sha1 611e15e4... instead of
-# e07c3a46...), while the as in use is the one built with focal's flex.
+# (tc-mips) and with flex 2.5.4a as-new would change (sha1 09a968b2... instead of
+# a7cd60b7...), while the as in use is the one built with focal's flex.
 RUN apt-get update && apt-get install -y flex-old && flex --version
 
 # Our patch to bfd, for ld (see its header): applied only now, so that gas, which links
