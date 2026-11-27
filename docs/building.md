@@ -35,8 +35,11 @@ Definitive Patch, and libm, libpthread, libdl and libcrypt of the PS2 Linux Kit 
 `__DATE__` and `__TIME__` are fixed, so a build does not depend on when it runs, and in the container
 (where the tree is `/work`: the paths of the headers end up in `bn`'s assert strings) the same sources
 give the same `bn.elf` and modules byte for byte. ld 2.9EE left a field of the `.compact_rel` entries
-uninitialized, which `docker/patches/ld-compact-rel-relvaddr.patch` sets to 0; `tools/build.py`
-checks that the ld in use is the patched one.
+uninitialized, which `docker/patches/ld-compact-rel-relvaddr.patch` sets to 0. gas 2.9EE moved two
+blocks with `memcpy` where source and destination can overlap, so its output depended on the libc it
+runs on (the NO_PIC expansion of a load/store from `sym(reg)` could lose its `lui`);
+`docker/patches/gas-overlapping-memcpy.patch` uses `memmove` there. `tools/build.py` checks that the
+as and the ld in use are the patched ones.
 
 ## Modules
 

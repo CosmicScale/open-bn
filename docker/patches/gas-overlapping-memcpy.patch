@@ -1,0 +1,51 @@
+Uses memmove for the two copies of gas whose source and destination can overlap.
+
+md_convert_frag (gas/config/tc-mips.c) replaces the first variant of a relaxed
+macro with the second one, which follows it in the same frag:
+memcpy (fixptr - old, fixptr, new). When the second variant is the longer one,
+the ranges overlap: the NO_PIC load/store from sym(reg) (addu + <op> with
+GPREL, 8 bytes, replaced by lui + addu + <op>, 12 bytes), and a few more. This
+as is an i386 binary that takes memcpy from the libc it runs on, and the
+implementation is chosen at run time: glibc's i386 __memcpy_ssse3 copies a block
+shorter than 48 bytes backwards when the low byte of the source address is below
+that of the destination. The last word of the new variant then overwrites the
+lui before it is copied, and the object gets <op> $r,0($r) carrying the
+R_MIPS_HI16 meant for the lui. Which macros are hit depends on where the frag
+lands in the heap: reading from stdin or from a file, or a different -o name,
+changes the set. A Linux 2.4.17 kernel assembled this way oopses.
+
+input_scrub_next_buffer (gas/input-scrub.c) moves the partial line left at the
+end of a 32 KB read to the start of the buffer, also with memcpy; the ranges
+overlap when that line is longer than what precedes it in the read (a line of
+some 16 KB or more). The i386 memcpy of glibc 2.44 copies such a block
+forwards, which is what the code needs, but nothing guarantees it: with a memcpy
+that copies backwards, gas crashes on such a line.
+
+Where the ranges do not overlap, or memcpy happens to copy forwards, memmove
+gives the same bytes. Only gas changes: ld and the other binutils do not link
+these files.
+
+--- a/gas/config/tc-mips.c
++++ b/gas/config/tc-mips.c
+@@ -12024,7 +12024,7 @@
+       fixptr = fragp->fr_literal + fragp->fr_fix;
+ 
+       if (new > 0)
+-	memcpy (fixptr - old, fixptr, new);
++	memmove (fixptr - old, fixptr, new);
+ 
+       fragp->fr_fix += new - old;
+     }
+--- a/gas/input-scrub.c
++++ b/gas/input-scrub.c
+@@ -316,8 +316,8 @@
+ 
+   if (partial_size)
+     {
+-      memcpy (buffer_start + BEFORE_SIZE, partial_where,
+-	      (unsigned int) partial_size);
++      memmove (buffer_start + BEFORE_SIZE, partial_where,
++	       (unsigned int) partial_size);
+       memcpy (buffer_start + BEFORE_SIZE, save_source, AFTER_SIZE);
+     }
+   limit = input_file_give_next_buffer (buffer_start
