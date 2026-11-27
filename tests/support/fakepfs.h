@@ -21,6 +21,7 @@ struct FakePart {
 	map<string, string> files; /* path inside the partition ("res/info.sys") -> content */
 	int failReads;           /* nonzero: every read of the partition fails with -EIO */
 	string failFile;         /* a path of `files` whose reads fail with -EIO */
+	int writable;            /* nonzero: its files can be written, created and truncated */
 };
 
 /* Empties the disk, the counters and the hooks. */
@@ -47,7 +48,8 @@ void fakeResetCounts(void);
 /* Files and listings open now. */
 int fakeOpenFds(void);
 
-/* Calls of the PFS interface the fake does not implement, and writes. */
+/* Calls of the PFS interface the fake does not implement, and writes outside
+   a writable partition. */
 extern int fakeUnexpected;
 /* Nonzero: listing hdd0: fails. */
 extern int fakeListFails;

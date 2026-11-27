@@ -20,6 +20,8 @@ struct FakeFd {
 	string data;    /* a file: its content */
 	long pos;
 	int fail;       /* its reads fail with -EIO */
+	FakePart *part; /* opened for writing: its partition, 0 otherwise */
+	string path;    /* opened for writing: the file `data` goes back to on close */
 };
 
 static vector<FakePart *> s_parts;
@@ -55,6 +57,7 @@ FakePart &fakeAddPartition(const char *name, unsigned size)
 	p->attr = 0;
 	p->size = size;
 	p->failReads = 0;
+	p->writable = 0;
 	p->header.assign(512, '\0'); /* no PS2ICON3D header */
 	fakeSetCtime(*p, 2026, 1, 1, 12, 0, 0);
 	s_parts.push_back(p);
@@ -261,6 +264,34 @@ int scepfsGetstat(const char *path, void *stat)
 	return 0;
 }
 
+/* A file of a writable partition opened for writing (flags of pfsd: 0x200
+   create, 0x400 truncate). */
+static int openForWrite(const char *path, int flags)
+{
+	FakeFd f;
+	FakePart *p;
+	string inside;
+
+	p = resolve(path, inside);
+	if (p == 0)
+		return FAKE_ENODEV;
+	if (!p->writable || inside.length() == 0) {
+		fakeUnexpected++;
+		return -13;
+	}
+	noteAccess(p);
+	if (p->files.find(inside) == p->files.end() && !(flags & 0x200))
+		return FAKE_ENOENT;
+	if (!(flags & 0x400))
+		f.data = p->files[inside];
+	f.dir = 0;
+	f.pos = 0;
+	f.fail = 0;
+	f.part = p;
+	f.path = inside;
+	return newFd(f);
+}
+
 /* "hdd0:<name>" opens the raw partition, "pfsN:/<path>" a file of a mounted one. */
 int scepfsOpen(const char *path, int flags, ...)
 {
@@ -268,10 +299,8 @@ int scepfsOpen(const char *path, int flags, ...)
 	FakePart *p;
 	string inside;
 
-	if (flags & 2) {
-		fakeUnexpected++; /* the import only reads */
-		return -13;
-	}
+	if (flags & 2)
+		return openForWrite(path, flags);
 	if (strncmp(path, "hdd0:", 5) == 0) {
 		p = fakeFind(path + 5);
 		if (p == 0)
@@ -293,6 +322,7 @@ int scepfsOpen(const char *path, int flags, ...)
 	f.fail = p->failReads || (inside.length() != 0 && inside == p->failFile);
 	f.dir = 0;
 	f.pos = 0;
+	f.part = 0;
 	return newFd(f);
 }
 
@@ -334,11 +364,32 @@ long scepfsLseek(int fd, long offset, int whence)
 	return f->pos;
 }
 
+int scepfsWrite(int fd, const void *buf, unsigned int size)
+{
+	map<int, FakeFd>::iterator i = s_fds.find(fd);
+	FakeFd *f;
+
+	if (i == s_fds.end() || (*i).second.part == 0) {
+		fakeUnexpected++;
+		return FAKE_EBADF;
+	}
+	f = &(*i).second;
+	if (f->pos > (long)f->data.length())
+		f->data.append(f->pos - f->data.length(), '\0');
+	f->data.replace(f->pos, size, (const char *)buf, size);
+	f->pos += size;
+	return size;
+}
+
 int scepfsClose(int fd)
 {
-	if (s_fds.find(fd) == s_fds.end())
+	map<int, FakeFd>::iterator i = s_fds.find(fd);
+
+	if (i == s_fds.end())
 		return FAKE_EBADF;
-	s_fds.erase(fd);
+	if ((*i).second.part != 0)
+		(*i).second.part->files[(*i).second.path] = (*i).second.data;
+	s_fds.erase(i);
 	return 0;
 }
 
@@ -351,6 +402,7 @@ int scepfsDopen(const char *path)
 	f.dir = 1;
 	f.pos = 0;
 	f.fail = 0;
+	f.part = 0;
 	return newFd(f);
 }
 
@@ -393,7 +445,6 @@ int scepfsSync(const char *mp, int)
 		return FAKE_EIO;                                                                                       \
 	}
 
-FAKE_UNEXPECTED(scepfsWrite(int, const void *, unsigned int))
 FAKE_UNEXPECTED(scepfsChstat(const char *, void *, unsigned int))
 FAKE_UNEXPECTED(scepfsMkdir(const char *, int))
 FAKE_UNEXPECTED(scepfsRmdir(const char *))
