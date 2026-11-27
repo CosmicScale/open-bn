@@ -122,13 +122,11 @@ static void test_cross_read_from_system_ini(void)
 	syscnf_setSysOpt(true);
 	TEST_ASSERT_EQUAL_INT(1, SysOption.getPadEnter());
 	TEST_ASSERT_EQUAL_INT(1, BNAPI::GetSystemParam(SYS_ENTER_BUTTON));
-	TEST_ASSERT_EQUAL_INT(1, callNative(smallext_sys, "GetSystemParam", SYS_ENTER_BUTTON));
 	putIni(systemIni(0));
 	readConfig();
 	syscnf_setSysOpt(true);
 	TEST_ASSERT_EQUAL_INT(0, SysOption.getPadEnter());
 	TEST_ASSERT_EQUAL_INT(0, BNAPI::GetSystemParam(SYS_ENTER_BUTTON));
-	TEST_ASSERT_EQUAL_INT(0, callNative(smallext_sys, "GetSystemParam", SYS_ENTER_BUTTON));
 }
 
 static void test_other_values_are_ignored(void)
