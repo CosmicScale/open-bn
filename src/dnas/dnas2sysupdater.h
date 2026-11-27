@@ -33,7 +33,6 @@ public:
 	int checkDataTagNumOnList(sysupCommandList *list, unsigned int tagA, unsigned int idxB);
 	int doSysupRPMDataCheckSig(sysupCommandList *list, unsigned int tagA, unsigned int idxB);
 	int doSysupRPMDataRPM(sysupCommandList *list, unsigned int tagA, unsigned int idxB);
-	int doReiserfsRemount(int mode);
 
 	int parse_param(char *str, char **argv);
 	int removeFileOnBNTmp(unsigned int len, char *name);
